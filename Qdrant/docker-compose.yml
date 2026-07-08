@@ -1,0 +1,16 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.10.0
+    container_name: qdrant-rag-engine
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - "qdrant_storage:/qdrant/storage"
+    restart: always
+    environment:
+      - QDRANT__SERVICE__ANALYTICS_TRACKING=false
+
+volumes:
+  qdrant_storage:
+    driver: local

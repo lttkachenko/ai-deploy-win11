@@ -1,0 +1,27 @@
+# Master configuration layer for LiteLLM gateway
+includes:
+  - shortcodes.yml # Imports the prompt file and activates the YAML anchor
+
+model_list:
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      <<: *sys_prompt
+      model: ollama/qwen3.6-moe-coder
+
+  - model_name: claude-opus-4-8
+    litellm_params:
+      <<: *sys_prompt
+      model: ollama/qwen3.6-moe-coder
+
+  - model_name: claude-haiku-4-5
+    litellm_params:
+      model: ollama/qwen3.6-inline-coder
+
+general_settings:
+  master_key: sk-sithedition-2026
+  cors_allow_origins: ["*"]
+
+litellm_settings:
+  drop_params: true
+  request_timeout: 600
+  set_verbose: false
