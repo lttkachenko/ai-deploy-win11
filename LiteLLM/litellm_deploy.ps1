@@ -70,4 +70,16 @@ Write-Host ">>> Configuring Host Background Process Infrastructure..." -Foregrou
 
 # Fire up active background daemon pipeline
 Start-Service -Name "LiteLLM-Proxy"
+
+# Healthcheck loop before pipeline completion
+$retries = 0
+while ($retries -lt 20) {
+  try {
+    $ping = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -TimeoutSec 2 -ErrorAction Stop
+    if ($ping.status -eq "ok") { break }
+  } catch {}
+  Start-Sleep -Milliseconds 500
+  $retries++
+}
+
 Write-Host "`n[SUCCESS] LiteLLM core proxy background daemon is operational and active." -ForegroundColor Green

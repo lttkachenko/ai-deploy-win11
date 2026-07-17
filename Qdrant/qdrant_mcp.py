@@ -1,84 +1,114 @@
 import sys
+import asyncio
 import argparse
-import requests
-from mcp.server.fastmcp import FastMCP
+import httpx
+from mcp.server.models import InitializationOptions
+from mcp.server import Notification, Server
+import mcp.types as types
+from libs import get_embedding
 
 # --- Parse Target Collection Allocation ---
-parser = argparse.ArgumentParser(description="Gheimher Automated FastMCP Qdrant Bridge")
+parser = argparse.ArgumentParser(description='Gheimher Automated Async MCP Qdrant Bridge')
 parser.add_argument(
-  "--collection",
+  '--collection',
   type=str,
-  default="db-dev",
-  help="Target Qdrant collection to query (e.g., db-dev, db-hobby)"
+  default='db-dev',
+  help='Target Qdrant collection to query (e.g., db-dev, db-hobby)'
 )
-# FastMCP parses sys.argv by default, so we extract our flag and purge sys.argv to prevent conflicts
 args, unknown = parser.parse_known_args()
 sys.argv = [sys.argv[0]] + unknown
 
 TARGET_COLLECTION = args.collection
 
 # --- Configuration Constants ---
-# Operating inside WSL2, 'win-host' alias maps via network_setup.ps1 loopback routes
-QDRANT_URL = "http://win-host:6333"
-OLLAMA_URL = "http://win-host:11434/api/embed"
-EMBED_MODEL = "nomic-embed-text"
+QDRANT_URL = 'http://win-host:6333'
+AI_ENGINE_URL = 'http://win-host:11434'
+EMBED_MODEL = 'nomic-embed-text'
 
-# Initialize FastMCP Server Node named dynamically after the target space
-mcp = FastMCP(f"Qdrant-RAG-{TARGET_COLLECTION}")
+# Initialize low-level async MCP server node
+server = Server(f'qdrant-rag-{TARGET_COLLECTION}')
 
-def get_query_embedding(query_text: str) -> list:
-  """Fetch structured vector coefficients from host Ollama embedding instance."""
-  try:
-    response = requests.post(OLLAMA_URL, json={"model": EMBED_MODEL, "input": query_text}, timeout=5)
-    response.raise_for_status()
-    return response.json()["embeddings"]
-  except Exception as e:
-    print(f"[CRITICAL] Embedding extraction failed via Ollama: {str(e)}", file=sys.stderr)
-    return []
+@server.list_tools()
+async def handle_list_tools() -> list[types.Tool]:
+  '''Advertises operational tool matrix to connected MCP client boundaries.'''
+  return [
+    types.Tool(
+      name='search_knowledge_base',
+      description='Search the local structural knowledge base collection for relevant contexts, guidelines, and rules.',
+      inputSchema={
+        'type': 'object',
+        'properties': {
+          'query': {'type': 'string', 'description': 'The search query string'},
+          'limit': {'type': 'integer', 'description': 'Max context chunks to pull', 'default': 5}
+        },
+        'required': ['query']
+      }
+    )
+  ]
 
-@mcp.tool()
-def search_knowledge_base(query: str, limit: int = 5) -> str:
-  """
-  Search the local structural knowledge base collection for relevant contexts, guidelines, and rules.
-  Use this tool whenever the user asks about system architecture, specific configs, roles, deployment steps, or code guidelines.
-  """
-  vector = get_query_embedding(query)
-  if not vector:
-    return "Error: Unable to generate query vector coefficients from local inference hub."
+@server.call_tool()
+async def handle_call_tool(name: str, arguments: dict | None) -> list[types.TextContent]:
+  '''Processes atomic tool call instructions asynchronously without blocking the loop.'''
+  if name != 'search_knowledge_base':
+    raise ValueError(f'Unsupported tool invocation request: {name}')
 
-  search_endpoint = f"{QDRANT_URL}/collections/{TARGET_COLLECTION}/points/search"
-  payload = {
-    "vector": vector,
-    "limit": limit,
-    "with_payload": True
-  }
+  if not arguments or 'query' not in arguments:
+    return [types.TextContent(type='text', text='Error: Missing required query parameter.')]
 
-  try:
-    res = requests.post(search_endpoint, json=payload, timeout=5)
-    res.raise_for_status()
-    results = res.json().get("result", [])
+  query = arguments['query']
+  limit = arguments.get('limit', 5)
 
-    if not results:
-      return f"No relevant context blocks identified within the target collection: '{TARGET_COLLECTION}'."
+  async with httpx.AsyncClient() as client:
+    # Seamless execution leveraging unified central library layout
+    vector = await get_embedding(client, query, AI_ENGINE_URL, EMBED_MODEL)
+    if not vector:
+      return [types.TextContent(type='text', text='Error: Unable to generate query vector coefficients.')]
 
-    formatted_chunks = []
-    for match in results:
-      score = match.get("score", 0.0)
-      data = match.get("payload", {})
-      text = data.get("text", "[Empty Payload]")
-      metadata = data.get("metadata", {})
-      source = metadata.get("source_file", "Unknown Origin")
+    search_endpoint = f'{QDRANT_URL}/collections/{TARGET_COLLECTION}/points/search'
+    payload = {'vector': vector, 'limit': limit, 'with_payload': True}
 
-      # Formatting block structure with clean cross-platform references
-      formatted_chunks.append(
-        f"--- CONTEXT BLOCK (Source: {source} | Cosine Match Score: {score:.4f}) ---\n{text}\n"
+    try:
+      res = await client.post(search_endpoint, json=payload, timeout=5.0)
+      res.raise_for_status()
+      results = res.json().get('result', [])
+
+      if not results:
+        return [types.TextContent(type='text', text=f"No relevant context blocks inside target collection: '{TARGET_COLLECTION}'.")]
+
+      formatted_chunks = []
+      for match in results:
+        score = match.get('score', 0.0)
+        data = match.get('payload', {})
+        text = data.get('text', '[Empty Payload]')
+        metadata = data.get('metadata', {})
+        source = metadata.get('source_file', 'Unknown Origin')
+
+        formatted_chunks.append(
+          f"--- CONTEXT BLOCK (Source: {source} | Cosine Match Score: {score:.4f}) ---\n{text}\n"
+        )
+
+      return [types.TextContent(type='text', text='\n'.join(formatted_chunks))]
+
+    except Exception as e:
+      return [types.TextContent(type='text', text=f'CRITICAL: Vector engine query collapsed. Trace: {str(e)}')]
+
+async def main():
+  '''Spawns continuous non-blocking stdio transport channel layer for the MCP protocol.'''
+  import mcp.server.stdio
+  async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+    await server.run(
+      read_stream,
+      write_stream,
+      InitializationOptions(
+        server_name=server.name,
+        server_version='2.1.0',
+        capabilities=server.get_capabilities(
+          notification_options=Notification(),
+          experimental_capabilities={}
+        )
       )
+    )
 
-    return "\n".join(formatted_chunks)
-
-  except Exception as e:
-    return f"CRITICAL: Failed to query vector storage engine at {TARGET_COLLECTION}. Internal Trace: {str(e)}"
-
-if __name__ == "__main__":
-  print(f">>> Launching FastMCP Gateway targeting Qdrant Collection Space: [{TARGET_COLLECTION}]", file=sys.stderr)
-  mcp.run(transport="stdio")
+if __name__ == '__main__':
+  print(f">>> Launching Async Universal MCP Gateway targeting Qdrant Context: [{TARGET_COLLECTION}]", file=sys.stderr)
+  asyncio.run(main())

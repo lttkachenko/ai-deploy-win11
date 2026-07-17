@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # 1. Pipeline Environment Discovery
 $winUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.Split('\')[-1]
@@ -90,6 +91,42 @@ if (Test-Path $sourceContextRoot) {
   throw "[FATAL] Centralized distribution directory missing: $sourceContextRoot"
 }
 
+# PHASE 0.5: Enforce Host Global Virtualization Boundaries
+Write-Host "    |-- Synchronizing Global WSL2 Virtualization Limits..." -ForegroundColor Yellow
+$targetWslConfig = Join-Path $homeDir ".wslconfig"
+$sourceWslConfig = Join-Path $PSScriptRoot "Conf\.wslconfig"
+
+if (Test-Path $sourceWslConfig) {
+  $wslNeedsShutdown = $false
+
+  # Idempotent validation layer: seed only if pristine or drift detected via SHA256 hashing
+  if (-not (Test-Path $targetWslConfig)) {
+    Copy-Item -Path $sourceWslConfig -Destination $targetWslConfig -Force
+    Write-Host "        |-- Seeded fresh global .wslconfig infrastructure limits." -ForegroundColor Green
+    $wslNeedsShutdown = $true
+  } else {
+    $sourceHash = (Get-FileHash -Path $sourceWslConfig -Algorithm SHA256).Hash
+    $targetHash = (Get-FileHash -Path $targetWslConfig -Algorithm SHA256).Hash
+
+    if ($sourceHash -ne $targetHash) {
+      Copy-Item -Path $sourceWslConfig -Destination $targetWslConfig -Force
+      Write-Host "        |-- Configuration drift detected. Overwriting global .wslconfig..." -ForegroundColor Cyan
+      $wslNeedsShutdown = $true
+    }
+  }
+
+  # Hard recycle the subsystem before network routing and Docker daemon initialization
+  if ($wslNeedsShutdown) {
+    Write-Host "        |-- Recycling WSL guest subsystem to map safe memory/CPU bounds..." -ForegroundColor Yellow
+    wsl --shutdown | Out-Null
+    Start-Sleep -Seconds 2
+  } else {
+    Write-Host "        |-- Global .wslconfig state is aligned and compliant." -ForegroundColor Green
+  }
+} else {
+  throw "[FATAL] Centralized distribution configuration missing at deployment source: $sourceWslConfig"
+}
+
 # 4. Phase 1: Host Base Environment Provisioning (Python, Venv, Tooling)
 Write-Host "`n[PHASE 1] Initializing Host Core Python Dependencies..." -ForegroundColor Yellow
 & $pypartsScript
@@ -98,13 +135,13 @@ Write-Host "`n[PHASE 1] Initializing Host Core Python Dependencies..." -Foregrou
 Write-Host "`n[PHASE 2] Establishing Cross-Boundary Network Bridges..." -ForegroundColor Yellow
 & $networkScript
 
-# 7. Phase 3: Reconcile and Sync Ollama Model Layers with Shortcode Manifests
-Write-Host "`n[PHASE 3.5] Reconciling and Pulling Required Local Ollama Models..." -ForegroundColor Yellow
-& $modelsScript
-
-# 6. Phase 3.5: Proxy Layer Provisioning (LiteLLM Config Transport & NSSM Daemon)
+# 6. Phase 3: Proxy Layer Provisioning (LiteLLM Config Transport & NSSM Daemon)
 Write-Host "`n[PHASE 3] Deploying Global LiteLLM Gateway Infrastructure..." -ForegroundColor Yellow
 & $litellmScript
+
+# 7. Phase 3.5: Reconcile and Sync Model Layers with Shortcode Manifests
+Write-Host "`n[PHASE 3.5] Reconciling and Pulling Required Local Models..." -ForegroundColor Yellow
+& $modelsScript
 
 # 8. Phase 4: Vector Engine Node Deployment (Docker-Compose & Persistent Watcher)
 Write-Host "`n[PHASE 4] Launching Distributed Qdrant Vector Engine Nodes..." -ForegroundColor Yellow

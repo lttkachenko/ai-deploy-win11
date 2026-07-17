@@ -1,16 +1,23 @@
-services:
-  qdrant:
-    image: qdrant/qdrant:v1.10.0
-    container_name: qdrant-rag-engine
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - "qdrant_storage:/qdrant/storage"
-    restart: always
-    environment:
-      - QDRANT__SERVICE__ANALYTICS_TRACKING=false
+version: '3.8'
 
-volumes:
-  qdrant_storage:
-    driver: local
+services:
+  qdrant-node:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-vector-engine
+    ports:
+      - '6333:6333'
+      - '6334:6334'
+    volumes:
+      - type: bind
+        source: ${USERPROFILE}\.ai\.qdrant\storage
+        target: /qdrant/storage
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2GB
+    environment:
+      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=2
+      # Absolute optimization: force mmap threshold to 0 to bypass memory-heavy RAM vectors allocations
+      - QDRANT__VECTORS__MEMMAP_THRESHOLD=0
+    restart: unless-stopped

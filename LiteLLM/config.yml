@@ -6,16 +6,16 @@ model_list:
   - model_name: claude-sonnet-4-6
     litellm_params:
       <<: *sys_prompt
-      model: ollama/qwen3.6-moe-coder
+      model: ollama/fredrezones55/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:Q4
 
   - model_name: claude-opus-4-8
     litellm_params:
       <<: *sys_prompt
-      model: ollama/qwen3.6-moe-coder
+      model: ollama/fredrezones55/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:Q4
 
   - model_name: claude-haiku-4-5
     litellm_params:
-      model: ollama/qwen3.6-inline-coder
+      model: ollama/qwen2.5-coder:1.5b-instruct-q4_K_M
 
 general_settings:
   master_key: sk-sithedition-2026
