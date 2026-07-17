@@ -16,7 +16,7 @@ parser.add_argument(
   help='Target Qdrant collection to query (e.g., db-dev, db-hobby)'
 )
 args, unknown = parser.parse_known_args()
-sys.argv = [sys.argv[0]] + unknown
+sys.argv = [sys.argv] + unknown
 
 TARGET_COLLECTION = args.collection
 
@@ -34,7 +34,7 @@ async def handle_list_tools() -> list[types.Tool]:
   return [
     types.Tool(
       name='search_knowledge_base',
-      description='Search the local structural knowledge base collection for relevant contexts, guidelines, and rules.',
+      description='Search the local structural knowledge base collection for relevant contexts and code blocks.',
       inputSchema={
         'type': 'object',
         'properties': {
@@ -43,54 +43,98 @@ async def handle_list_tools() -> list[types.Tool]:
         },
         'required': ['query']
       }
+    ),
+    types.Tool(
+      name='hydrate_project_context',
+      description='Dynamically fetch high-level system roles, developer playbooks, and architectural guidelines from the RAG store based on extracted identity name token.',
+      inputSchema={
+        'type': 'object',
+        'properties': {
+          'context_key': {'type': 'string', 'description': 'Target blueprint identity name or persona token extracted from user query'}
+        },
+        'required': ['context_key']
+      }
     )
   ]
 
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict | None) -> list[types.TextContent]:
   '''Processes atomic tool call instructions asynchronously without blocking the loop.'''
-  if name != 'search_knowledge_base':
+  if name not in ['search_knowledge_base', 'hydrate_project_context']:
     raise ValueError(f'Unsupported tool invocation request: {name}')
 
-  if not arguments or 'query' not in arguments:
-    return [types.TextContent(type='text', text='Error: Missing required query parameter.')]
-
-  query = arguments['query']
-  limit = arguments.get('limit', 5)
+  if not arguments:
+    return [types.TextContent(type='text', text='Error: Missing required execution parameters.')]
 
   async with httpx.AsyncClient() as client:
-    # Seamless execution leveraging unified central library layout
-    vector = await get_embedding(client, query, AI_ENGINE_URL, EMBED_MODEL)
-    if not vector:
-      return [types.TextContent(type='text', text='Error: Unable to generate query vector coefficients.')]
+    # --- Context Hydration Execution Branch ---
+    if name == 'hydrate_project_context':
+      context_key = arguments['context_key'].lower().strip()
 
-    search_endpoint = f'{QDRANT_URL}/collections/{TARGET_COLLECTION}/points/search'
-    payload = {'vector': vector, 'limit': limit, 'with_payload': True}
+      # Abstract structural query construction targeting dynamic identity vectors
+      search_query = f'identity setup operational profile playbook engineering guidelines for persona name: {context_key}'
 
-    try:
-      res = await client.post(search_endpoint, json=payload, timeout=5.0)
-      res.raise_for_status()
-      results = res.json().get('result', [])
+      vector = await get_embedding(client, search_query, AI_ENGINE_URL, EMBED_MODEL)
+      if not vector:
+        return [types.TextContent(type='text', text='Error: Unable to generate hydration vector coefficients.')]
 
-      if not results:
-        return [types.TextContent(type='text', text=f"No relevant context blocks inside target collection: '{TARGET_COLLECTION}'.")]
+      search_endpoint = f'{QDRANT_URL}/collections/{TARGET_COLLECTION}/points/search'
+      payload = {'vector': vector, 'limit': 2, 'with_payload': True}
 
-      formatted_chunks = []
-      for match in results:
-        score = match.get('score', 0.0)
-        data = match.get('payload', {})
-        text = data.get('text', '[Empty Payload]')
-        metadata = data.get('metadata', {})
-        source = metadata.get('source_file', 'Unknown Origin')
+      try:
+        res = await client.post(search_endpoint, json=payload, timeout=5.0)
+        res.raise_for_status()
+        results = res.json().get('result', [])
 
-        formatted_chunks.append(
-          f"--- CONTEXT BLOCK (Source: {source} | Cosine Match Score: {score:.4f}) ---\n{text}\n"
-        )
+        if not results:
+          return [types.TextContent(type='text', text=f"Hydration failed. Operational playbook asset not found inside vector storage for identity token: '{context_key}'.")]
 
-      return [types.TextContent(type='text', text='\n'.join(formatted_chunks))]
+        formatted_system_blocks = []
+        for match in results:
+          data = match.get('payload', {})
+          text = data.get('text', '')
+          source = data.get('metadata', {}).get('source_file', 'Unknown Origin')
+          formatted_system_blocks.append(f'### IDENTITY INJECTED: {context_key.upper()} (Source: {source}) ###\n{text}')
 
-    except Exception as e:
-      return [types.TextContent(type='text', text=f'CRITICAL: Vector engine query collapsed. Trace: {str(e)}')]
+        return [types.TextContent(type='text', text='\n\n'.join(formatted_system_blocks))]
+      except Exception as e:
+        return [types.TextContent(type='text', text=f'CRITICAL: Hydration pipeline connection collapsed. Trace: {str(e)}')]
+
+    # --- Standard Semantic Search Execution Branch ---
+    if name == 'search_knowledge_base':
+      query = arguments['query']
+      limit = arguments.get('limit', 5)
+
+      vector = await get_embedding(client, query, AI_ENGINE_URL, EMBED_MODEL)
+      if not vector:
+        return [types.TextContent(type='text', text='Error: Unable to generate query vector coefficients.')]
+
+      search_endpoint = f'{QDRANT_URL}/collections/{TARGET_COLLECTION}/points/search'
+      payload = {'vector': vector, 'limit': limit, 'with_payload': True}
+
+      try:
+        res = await client.post(search_endpoint, json=payload, timeout=5.0)
+        res.raise_for_status()
+        results = res.json().get('result', [])
+
+        if not results:
+          return [types.TextContent(type='text', text=f"No relevant context blocks inside target collection: '{TARGET_COLLECTION}'.")]
+
+        formatted_chunks = []
+        for match in results:
+          score = match.get('score', 0.0)
+          data = match.get('payload', {})
+          text = data.get('text', '[Empty Payload]')
+          metadata = data.get('metadata', {})
+          source = metadata.get('source_file', 'Unknown Origin')
+
+          formatted_chunks.append(
+            f"--- CONTEXT BLOCK (Source: {source} | Cosine Match Score: {score:.4f}) ---\n{text}\n"
+          )
+
+        return [types.TextContent(type='text', text='\n'.join(formatted_chunks))]
+      except Exception as e:
+        return [types.TextContent(type='text', text=f'CRITICAL: Vector engine query collapsed. Trace: {str(e)}')]
 
 async def main():
   '''Spawns continuous non-blocking stdio transport channel layer for the MCP protocol.'''
@@ -101,7 +145,7 @@ async def main():
       write_stream,
       InitializationOptions(
         server_name=server.name,
-        server_version='2.1.0',
+        server_version='2.2.0',
         capabilities=server.get_capabilities(
           notification_options=Notification(),
           experimental_capabilities={}
