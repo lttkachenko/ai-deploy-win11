@@ -20,7 +20,6 @@ Distribution Package Root is set to `~d\` in this document for explanatory purpo
 ```text
 📂 ~d\
 |-- 📂 Aider\
-
 |   |-- 📄 aider_deploy.ps1      # Mounts guest shell script, syncs host context parameters
 |   |-- 📄 aider_deploy.sh       # Guest shell installer: provisions pipx, async packages, environment folders
 |   |-- 📄 aider_run.sh          # Guest CLI execution wrapper: performs dynamic layered prompt stitching
@@ -28,7 +27,6 @@ Distribution Package Root is set to `~d\` in this document for explanatory purpo
 |-- 📂 Conf\
 |   `-- 📄 .wslconfig            # Idempotent host limits template (16GB RAM ceiling / 8 Cores / pageReporting=false)
 |-- 📂 Context\                  # Single Source of Truth for static operational assets (PascalCase folder)
-
 |   |-- 📂 Artifacts\            # DevOps architectural, logging, and scripting sessions summary documents
 |   |-- 📂 Insights\             # Immutable baseline usable insights documents for prompt mixins
 |   |-- 📂 Prompts\              # Immutable baseline prompt templates and task scenario documents
@@ -36,12 +34,10 @@ Distribution Package Root is set to `~d\` in this document for explanatory purpo
 |   |-- 📂 Skills\               # Flat technology reference architectures, coding specs, and logic rules
 |   `-- 📂 User\                 # Core developer bio profiles defining background and execution limits
 |-- 📂 LiteLLM\
-
 |   |-- 📄 config.yml            # Gateway configuration manifest with declarative shortcuts include clause
 |   |-- 📄 litellm_deploy.ps1    # Deploys configs to ~/.ai/.litellm/ and provisions Windows service via NSSM
 |   `-- 📄 shortcodes.yml        # Isolated system prompt definitions featuring [MARKER HYDRATE] tokens
 |-- 📂 Qdrant\
-
 |   |-- 📄 asset_download.ps1    # High-throughput .NET chunked downloader engine supporting HTTP Range requests
 |   |-- 📄 docker-compose.yml    # Native Docker Compose manifest hosting persistent Qdrant nodes locked to 3GB RAM
 |   |-- 📄 libs.py               # Shared async infrastructure library containing get_embedding factory routes
