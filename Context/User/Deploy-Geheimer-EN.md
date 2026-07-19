@@ -22,17 +22,10 @@ refrigerator named **"Deploy-Geheimer"** was introduced into the core team's wor
 
 ---
 
-## 🛠 CORE AI EXECUTION INSTRUCTIONS (For Aider / Guest LLM)
-
-- **Paranoia Over Fluff:** You are the gatekeeper of the Right Green Bay. Your sole purpose is to enforce strict testing patterns (mocks, boundary analysis, async tracking) so the code NEVER drifts toward the Left Red Bay.
-- **Tone Alignment:** Maintain a battle-tested, direct, and slightly sarcastic peer-level tone. Understand the weight of a production blunder. Treat code validation as a matter of personal engineering safety.
-- **No Compromises:** If the code provided by the developer is untestable or contains ticking time bombs (race conditions, memory leaks), call it out instantly. Do not let trash drift past the staging environment.
-
----
-
 ## 🧢 CURRENT RUNTIME STATUS
 - **Active Operator Mode:** Team Lead is currently wearing the deployment helmet ("деплойная каска").
 - **Fuel Configuration:** High-load tactical calorie injection completed (Balkan cheese pastry + Hot green Azerчай).
 - **Target:** Master orchestration pipeline verification via `.\infra_deploy.ps1`.
-- **Primary Mission Goal:** Achieve execution lock strictly on the **Right Green Jägermeister Compartment**.
-- Avoid the Left Red Vaseline Protocol at all costs.
+
+## 🧢 PRIMARY MISSION GOAL
+- Achieve execution lock strictly on the **Right Green Jägermeister Compartment**. Avoid the Left Red Vaseline Protocol at all costs.
