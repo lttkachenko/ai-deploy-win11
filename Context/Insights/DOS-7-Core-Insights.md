@@ -1,0 +1,21 @@
+# ENTERPRISE CORE INSIGHTS: NATIVE C++ RUNTIMES & ASYNC STREAM ISOLATION (DOS-7)
+
+## 1. HEADLESS HARDWARE INSULATION (GO-PROXY & STRICT VRAM CAPS)
+- **Insight**: Relying on heavy, Electron-based GUI engines or abstract orchestration layers (like Ollama/LiteLLM) to manage model rotation introduces significant memory overhead and unpredictable VRAM leakage, leading to system-wide graphics degradation (TDR crashes).
+- **Architectural Rule**: The core model execution layer must run on a bare-metal, native C++ topology managed via a lightweight, Go-backed routing proxy (`llama-swap`). Systems must enforce strict sequential request throttling (`concurrency: 1`) and aggressive time-to-live (`ttl: 300s`) parameters to hard-cap maximum GPU allocation within a **6GB boundary** on 8GB physical VRAM host configurations. Non-active engine processes must be immediately and forcefully evicted from the CUDA grid upon task completion to keep hardware lanes clean.
+
+## 2. ASYNCHRONOUS ENGINE CONSISTENCY (EVENT LOOP WORKER THREADING)
+- **Insight**: Executing heavy tensor computations (`.encode()`) or synchronous filesystem operations (`with open()`, `read()`, or recursive note transclusions) inside an asynchronous Python loop freezes the global event handler thread, causing severe lag and dropped events in neighboring real-time processes.
+- **Architectural Rule**: The entire data ingestion and routing layer must strictly maintain **Async Consistency**. All synchronous C-extensions, neural matrix calculations, and blocking disk I/O routines must be completely isolated and offloaded from the main event loop thread via an explicit **`asyncio.to_thread()`** worker allocation. This guarantees that thread scheduling remains fluid and non-blocking across concurrent FastMCP and filesystem auditor cycles.
+
+## 3. DETERMINISTIC RE-INDEXING MATRIX (DETERMINISTIC POINTS PROTECTION)
+- **Insight**: Injecting non-deterministic variables (such as dynamic timestamps `time.time()`) into vector point IDs (`point_id`) during real-time markdown mutations causes incremental indexing leakage, generating millions of ghost duplicate vectors in Qdrant collections.
+- **Architectural Rule**: Vector record identification maps must be fully **deterministic**. Point IDs inside `libs.py` must be computed by hashing strictly the combination of the absolute file coordinates and the relative chunk sequence index (`hash(f'{file_path}_{i}')`). This ensures that file modifications trigger atomic overwrites (`upsert`) or precise deletions (`delete`) inside the collection, keeping storage layouts optimized and clean.
+
+## 4. DECOUPLED NETWORK TOPOLOGY (HYPER-V ZERO-ADDRESS LOOPBACK TUNNELING)
+- **Insight**: Windows 11 host boundaries inherently isolate zero-address broadcasts (`0.0.0.0`) from the Hyper-V virtual switch, completely blocking ingress packets from the WSL2 guest kernel and container networks, while simultaneously rejecting attempts to bind services directly to the dynamic vEthernet IP.
+- **Architectural Rule**: All headless background daemons (`llama-swap`, FastMCP SSE servers, Qdrant REST APIs) must be bound strictly to the local host loopback interface (`127.0.0.1`). Network routing setup layers must bypass Hyper-V broadcast locks by dynamically extracting the volatile WSL vEthernet gateway IP, inject it as the `win-host` DNS token inside the guest `/etc/hosts` registry, and enforce explicit **`netsh interface portproxy`** tunnels to route traffic strictly from the gateway IP into the host loopback sockets.
+
+## 5. REPOSITORY DE-CONTAINERIZATION HYGIENE (NATIVE SERVICE ELEVATION)
+- **Insight**: Packing low-level Python scripts into Docker containers when they only run lightweight CPU tasks creates an unnecessary virtualization layer, adding gigabytes of OS image overhead and complicating network/volume bindings.
+- **Architectural Rule**: FastMCP context layers and background tracking daemons must run natively on the host machine using an isolated virtual environment (`.venv`). Services must be elevated to persistent background Windows services using the **NSSM wrapper** running under the current active user profile account. This allows both scripts to seamlessly share the unified system cache (`~/.cache/huggingface/`), eliminating redundant multi-gigabyte downloads of model weights across developer rigs.

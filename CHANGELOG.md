@@ -3,7 +3,30 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com).
 
-## [Unreleased] - DOS-6 (2026-07-17)
+## [Unreleased] - DOS-7 (2026-07-19)
+
+### Added
+- (DOS-7) - Integrated `llama-swap` Go-backed proxy gateway on the host to manage the lazy execution loop lifecycle of native C++ `llama-server` instances.
+- (DOS-7) - Implemented strict 6GB VRAM allocation caps and sequential request throttling (`concurrency: 1`) via a centralized `config.yml` layout.
+- (DOS-7) - Replicated LiteLLM prompt template anchors by natively injecting the multi-layer spec prompt (`[MARKER HYDRATE]` and `IDENTITY HYDRATION` policy) into `llama-server` via the `--system-prompt-file` argument.
+- (DOS-7) - Migrated the containerized FastMCP server (`qdrant_mcp.py`) directly to the host network boundary as a persistent background Windows service using the `NSSM` wrapper.
+- (DOS-7) - Swapped out stdout transport protocols inside the FastMCP server for a unified network-accessible `SSE HTTP` web server structure listening on port 8000.
+
+### Modified
+- (DOS-7) - Deprecated and completely purged the entire `LiteLLM` proxy layer, `Ollama` daemon dependencies, and `NSSM` Windows services configuration scripts on the host.
+- (DOS-7) - Refactored `models_deploy.ps1` into a strict data-delivery module, stripping out execution code to cleanly pull `IQ4_NL` / `Q4_K_M` GGUF weights directly from Hugging Face into `%USERPROFILE%/.ai/models`.
+- (DOS-7) - Redefined `Aider\config.yml` parameters to execute direct native OpenAI-compatible calls on port 1234 using the `openai/claude-sonnet-4-6` identifier.
+- (DOS-7) - Optimized `aider_run.sh` to pass a single isolated target token trigger `[MARKER HYDRATE] $ROLE` to offload the entire persona parsing stream down to the Qdrant RAG index.
+- (DOS-7) - Re-engineered `network_setup.ps1` to handle severe Hyper-V zero-address binding bugs by mapping precise cross-boundary `netsh interface portproxy` tunnels from the WSL vEthernet gateway IP to `1234`, `8000`, and `6333` ports on loopback.
+
+### Fixed
+- (DOS-7) - Secured the `qdrant_watcher.py` file mapping logic by forcing index arrays to index `[0]` inside `os.path.splitext`, preventing runtime task drops on dot-nested file tags.
+- (DOS-7) - Eliminated duplicate vector node allocations inside `libs.py` by removing the unstable `time.time()` string slice from the `point_id` hash algorithm.
+- (DOS-7) - Resolved critical Python async consistency block errors by wrapping the heavy synchronous `.encode()` method inside `asyncio.to_thread()`, moving CPU tensor generation entirely off the main event loop thread.
+- (DOS-7) - Fixed I/O blocking blocks inside `libs.py` by wrapping standard synchronous `open()` and recursive transclusion file reads inside an isolated `asyncio.to_thread()` pipeline.
+- (DOS-7) - Corrected Sonar / Linter security hotspot flags inside `qdrant_deploy.ps1` by expanding the truncated health-check address to a valid production `http://127.0.0` URI.
+
+## - DOS-6 (2026-07-17)
 
 ### Added
 - (DOS-6) - Overhauled the entire RAG pipeline python layer (`libs.py`, `qdrant_watcher.py`, `qdrant_mcp.py`) to fully asynchronous execution topology using `asyncio` and `httpx`.

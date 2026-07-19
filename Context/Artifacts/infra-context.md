@@ -1,14 +1,14 @@
-# SYSTEM ARCHITECTURE CONTEXT: LOCAL AI DEVOPS & RAG INFRASTRUCTURE (REVISED)
+# SYSTEM ARCHITECTURE CONTEXT: LOCAL AI DEVOPS & C++ INFRASTRUCTURE (REVISED)
 
 ## 1. ROLES & Actors
 ### User ([[User-EN]], [[User-RU]])
-- Senior JS/TS Full Stack Software Engineer / Enterprise Architecture Team Lead.
+- Senior JS/TS Full Stack Software Engineer / Enterprise Architecture Team Lead. Single Source of Truth for task generation.
 
 ### AI Assistant ([[AI-Devops-EN]], [[AI-Devops-RU]])
-- Zhorvis: Battle-tested Senior/Lead DevOps Infrastructure Architect consultant. Direct, cynical, peer-level Slack tone.
+- Zhorvis: Battle-tested Senior/Lead DevOps Infrastructure Architect consultant. Direct, cynical, peer-level Slack tone. No fluff.
 
 ### Guest AI ([[AI-AQA-EN]], [[AI-AQA-RU]])
-- Aider: Autonomous AI-AQA / automated quality assurance engineering agent executing direct code modifications inside WSL guest workspace.
+- Aider: Autonomous AI-AQA engineering agent executing direct code modifications inside WSL guest workspace via native OpenAI-compatible protocol.
 
 ---
 
@@ -20,10 +20,14 @@ Distribution Package Root is set to `~d\` in this document for explanatory purpo
 ```text
 📂 ~d\
 |-- 📂 Aider\
-|   |-- 📄 aider_deploy.ps1      # Mounts guest shell script, syncs host context parameters
-|   |-- 📄 aider_deploy.sh       # Guest shell installer: provisions pipx, async packages, environment folders
-|   |-- 📄 aider_run.sh          # Guest CLI execution wrapper: performs dynamic layered prompt stitching
-|   `-- 📄 config.yml            # Guest configuration blueprint featuring declarative MCP server bindings
+|   |-- 📄 aider_deploy.ps1      # Mounts guest shell script, maps parent root path for qdrant_mcp.py extraction
+|   |-- 📄 aider_deploy.sh       # Guest shell installer: locks version to aider-chat==0.74.0 via pipx
+|   |-- 📄 aider_run.sh          # Guest CLI execution wrapper: injects ultra-lightweight [MARKER HYDRATE] triggers
+|   `-- 📄 config.yml            # Guest configuration blueprint featuring declarative SSE HTTP network MCP bindings
+|-- 📂 Backend\                  # Encapsulated C++ inference gateway matrix (Former LiteLLM directory)
+|   |-- 📄 backend_deploy.ps1    # Provisions native llama binaries, registers app path, spawns NSSM host service
+|   |-- 📄 config.yml            # Master swap configuration manifest driving multi-user environment-agnostic profiles
+|   `-- 📄 system_prompt.txt     # Pure system prompt template asset layer embedding the IDENTITY HYDRATION policy
 |-- 📂 Conf\
 |   `-- 📄 .wslconfig            # Idempotent host limits template (16GB RAM ceiling / 8 Cores / pageReporting=false)
 |-- 📂 Context\                  # Single Source of Truth for static operational assets (PascalCase folder)
@@ -33,21 +37,15 @@ Distribution Package Root is set to `~d\` in this document for explanatory purpo
 |   |-- 📂 Roles\                # Hardened engineering system personas (AQA, DevOps, and Backend Lead profiles)
 |   |-- 📂 Skills\               # Flat technology reference architectures, coding specs, and logic rules
 |   `-- 📂 User\                 # Core developer bio profiles defining background and execution limits
-|-- 📂 LiteLLM\
-|   |-- 📄 config.yml            # Gateway configuration manifest with declarative shortcuts include clause
-|   |-- 📄 litellm_deploy.ps1    # Deploys configs to ~/.ai/.litellm/ and provisions Windows service via NSSM
-|   `-- 📄 shortcodes.yml        # Isolated system prompt definitions featuring [MARKER HYDRATE] tokens
 |-- 📂 Qdrant\
-|   |-- 📄 asset_download.ps1    # High-throughput .NET chunked downloader engine supporting HTTP Range requests
-|   |-- 📄 docker-compose.yml    # Native Docker Compose manifest hosting persistent Qdrant nodes locked to 3GB RAM
-|   |-- 📄 libs.py               # Shared async infrastructure library containing get_embedding factory routes
-|   |-- 📄 qdrant_deploy.ps1     # Fires up container, validates HTTP healthz, locks watchers to Windows Tasks
-|   |-- 📄 qdrant_mcp.py         # Async official mcp.server implementation with explicit Identity Hydration tools
+|   |-- 📄 docker-compose.yml    # Native Docker Compose manifest hosting pristine official Qdrant node capped to 2GB
+|   |-- 📄 libs.py               # Shared async library offloading heavy CPU tensor generation off the event loop
+|   |-- 📄 qdrant_deploy.ps1     # Synces Python assets, validates healthz, mounts watcher tasks and NSSM MCP service
+|   |-- 📄 qdrant_mcp.py         # Async host FastMCP tool exposing non-blocking SSE HTTP streams on port 8000
 |   `-- 📄 qdrant_watcher.py     # High-performance async file-system auditor leveraging Rust-backed watchfiles loop
 |-- 📄 infra_deploy.ps1          # Unified master orchestration engine routing all deployment lifecycle phases
-|-- 📄 models_deploy.ps1         # Polymorphic pipeline automatically detecting Ollama and headless llmster/lms CLI
-|-- 📄 network_setup.ps1         # Rebuilds firewall rules, netsh portproxy bindings (8000/6333), and WSL DNS inversion
-`-- 📄 pyparts_deploy.ps1        # Instantiates virtual sandbox with locked versions (watchfiles==0.24.0, httpx==0.27.0)
+|-- 📄 models_deploy.ps1         # Safe declarative downloader pipeline pulling GGUF weights directly from Hugging Face
+`-- 📄 network_setup.ps1         # Rebuilds firewall rules (LocalSubnet) and Netsh PortProxy vEthernet tunnels
 ```
 
 Production User Profile Runtime Root: `~/.ai/` (`C:\Users\<User>\.ai\`)
@@ -55,81 +53,80 @@ Production User Profile Runtime Root: `~/.ai/` (`C:\Users\<User>\.ai\`)
 ### Destination Directory Layout
 ```text
 📂 ~/.ai/
-|-- 📂 .litellm/          # Mapped configuration file layer, shortcodes, and daemon logging targets
-|-- 📂 .qdrant/           # Persistent docker storage binds, isolated .venv sandbox, and live watcher python scripts
-`-- 📂 context/           # Mapped active resource pool deployment root
+|-- 📂 bin/               # Centralized repository for native binaries (llama-swap.exe, llama-server.exe, nssm.exe, config.yml)
+|-- 📂 log/               # Consolidated enterprise telemetry room tracking llama-swap.log and qdrant-mcp.log
+|-- 📂 models/            # Pure data asset layer hosting downloaded Q4_K_M and IQ4_NL GGUF weight matrices
+|-- 📂 .qdrant/           # Persistent docker storage binds and isolated .venv python sandbox environment
+`-- 📂 context/           # Mapped active bootstrap resource pool deployment root
     |-- 📂 roles/         # AI Persona definition markdown files (zhorvis.md, aider.md, max.md)
     |-- 📂 prompts/       # Immediate session task instruction execution files
-    |-- 📂 skills/        # Reference engineering standards and specification notes
     `-- 📂 user/          # Core personalized profile constraints (User-RU.md, User-EN.md)
+
 ```
 
----
+## 3. CORE INFRASTRUCTURE CONFIGURATIONS (REVISED)
 
-## 3. CORE INFRASTRUCTURE CONFIGURATIONS
+### Llama-Swap `config.yml`
+Exposes the single source of truth for local model virtualization and routing. Driven by a fast Go-backed proxy gateway on the Windows Host listening strictly on the loopback interface (`127.0.0.1:1234`) to completely bypass Hyper-V zero-address binding bugs. Managed as a persistent, headless background Windows service via the `NSSM` daemon running under the active user session context. It enforces strict sequential execution (`concurrency: 1`) to lock maximum VRAM utilization to a hard **6GB boundary** (out of 8GB physical host VRAM) and automatically evicts dead server processes from memory via an aggressive time-to-live (`ttl: 300s`) configuration layer.
 
-### LiteLLM `shortcodes.yml`
-Mapped to local `ollama/qwen2.5-coder` or OpenAI-compatible custom endpoint (`http://127.0.0`) driven by LM Studio. Context length forced to 32768 tokens. System prompt markers hardcoded (`[MARKER L99]`, `[MARKER ULTRATHINK]`). Contains mandatory `[CRITICAL POLICY: IDENTITY HYDRATION]` guardrails triggering explicit persona mutation tool calls via `[MARKER HYDRATE]` parsing logic.
-
-### LiteLLM `config.yml`
-Includes relative mapping to `shortcodes.yml`. Master key: `sk-sithedition-2026`. Service runs on Windows Host via NSSM daemon on `127.0.0.1:8000`. Log streams routed inside hidden runtime path `~/.ai/.litellm/`.
+### Native C++ `llama-server` Primitives
+Launched on-demand by the swap router proxy on isolated loopback ports (`8080`, `8081`, `8082`). It completely bypasses heavy Python/JS runtime overheads, loading quantum files (`IQ4_NL` / `Q4_K_M`) directly into the GPU CUDA grid via the `--n-gpu-layers -1` command parameter. It natively replicates old LiteLLM YAML anchors by reading the corporate specification instructions from a static file via the `--system-prompt-file` flag. The system prompt contains explicit `[MARKER L99]`, `[MARKER ULTRATHINK]`, and `[MARKER HYDRATE]` token layers, enforcing the absolute `[CRITICAL POLICY: IDENTITY HYDRATION]` guardrails.
 
 ### Aider `config.yml` (Inside WSL: `~/.config/aider/config.yml`)
-Routes execution streams directly to host loopback bridge `http://win-host:8000/v1`. Integrates python-driven MCP server module dynamically mapped to host windows workspace targets using standard `stdio` transport.
+Completely stripped of Ollama/LiteLLM pre-parsing prefix configurations. Routes execution streams directly to the host loopback port-proxy bridge via the standardized protocol format `model: openai/claude-sonnet-4-6` targeting the `http://win-host:1234/v1` gateway. Integrates the host-level FastMCP server node dynamically using the advanced `url: http://win-host:8000/sse` network transport block.
 
 ---
 
 ## 4. MODULAR POWERSHELL DEPLOYMENT SCRIPTS
 
 ### 1. `infra_deploy.ps1` (Master Orchestrator / Root Point)
-- **PHASE 0**: Idempotently provisions `~/.ai/` master layout structure.
-- **PHASE 0.5**: Evaluates file integrity of `%USERPROFILE%\.wslconfig` via SHA256 hashing. Syncs changes from `Conf\.wslconfig` and executes immediate non-blocking `wsl --shutdown` recycle to isolate memory space **prior** to initializing networks.
-- **PHASE 1-5**: Sequential execution control pipeline: `pyparts_deploy.ps1` -> `network_setup.ps1` -> `LiteLLM\litellm_deploy.ps1` -> `models_deploy.ps1` -> `Qdrant\qdrant_deploy.ps1` -> `Aider\aider_deploy.ps1`.
+* **PHASE 0**: Idempotently provisions the `~/.ai/` user-isolated profile master layout structure.
+* **PHASE 0.5**: Legacy Infrastructure Liquidation. Gracefully terminates and completely deletes the old Windows `litellm` service via `sc.exe`, purges legacy config folders, executes global `pip uninstall litellm -y`, and recursively wipes the distribution `LiteLLM` source directory from the host machine.
+* **PHASE 1-6**: Sequential execution control pipeline: `LMStudio\lms_deploy.ps1` (Backend service) -> `pyparts_deploy.ps1` -> `network_setup.ps1` -> `models_deploy.ps1` -> `Qdrant\qdrant_deploy.ps1` -> `Aider\aider_deploy.ps1`.
 
 ### 2. `pyparts_deploy.ps1` (Python & Venv Handler / Root Point)
-- Upgrades foundational package managers, maps host-level `litellm[proxy]==1.34.0`.
-- Provisions isolated `.venv` sandbox within `~/.ai/.qdrant/`. Installs explicit frozen dependency layers (`watchfiles==0.24.0`, `qdrant-client==1.9.0`, `langchain-text-splitters==0.2.0`, `httpx==0.27.0`, `mcp==1.2.1`). Syncs `qdrant_watcher.py` and `libs.py` into production paths.
+* Validates host system Python compliance (minimum version 3.10 required).
+* Provisions an isolated `.venv` sandbox within `~/.ai/.qdrant/` packed with frozen, production-ready asynchronous dependencies (`watchfiles==0.21.0`, `qdrant-client==1.9.0`, `fastmcp==0.4.1`, `sentence-transformers==3.0.1`, `langchain-text-splitters==0.2.0`, `pydantic==2.7.1`, `pyyaml==6.0.1`).
 
 ### 3. `network_setup.ps1` (Security & Routing Bridge / Root Point)
-- Sets Inbound Windows Firewall permit status for port 8000. Wipes and maps native routing parameters via `netsh interface portproxy` targeting volatile WSL guest interface IP.
-- Enforces inverse DNS rules inside WSL guest subsystem config files, linking alias token `win-host` to current host gateway via shell bootstrap triggers.
+* Establishes a highly restrictive firewall perimeter via `New-NetFirewallRule` for ports `1234`, `8000`, and `6333` locked to `-RemoteAddress LocalSubnet` to completely prevent external LAN intrusions while maintaining guest access.
+* Dynamically extracts the volatile WSL vEthernet gateway IP interface on log-on, automatically injects it as `win-host` inside the guest `/etc/hosts` registry, and sets up explicit `netsh interface portproxy` mapping tunnels from the gateway IP straight into the host loopback `127.0.0.1` sockets.
 
-### 4. `models_deploy.ps1` (Engine Warmup Factory / Root Point)
-- Polymorphic backend detection module. Automatically tests ports `11434` (Ollama) and `1234` (LM Studio).
-- **Ollama Mode**: Injects specific `CUDA_MALLOC_MAX_BYTES` (6.2GB) registry bounds and disables WDDM TDR shared memory fallback to prevent Windows GUI crashes under heavy context lengths.
-- **LM Studio Mode**: Automatically triggers headless `lms daemon up` background service, utilizes multi-threaded `lms get` engine to pull weight signatures from Hugging Face hub, and performs explicit cache pre-loading via `lms load`.
+### 4. `models_deploy.ps1` (Asset Delivery Factory / Root Point)
+* Pure data asset ingestion pipeline. It uses lightweight, inline Python scripts to safely parse the centralized `Backend\config.yml` Single Source of Truth profiles list.
+* Evaluates active weight files inside `~/.ai/models/` and silently downloads missing GGUF models directly from Hugging Face repositories using chunked web requests forced to the secure TLS 1.2 network protocol.
 
 ### 5. `Qdrant\qdrant_deploy.ps1` (Vector Engine Node / Qdrant Folder)
-- Instantiates Qdrant container architecture via standard `docker-compose.yml` (port 6333). Blocks execution thread until HTTP `/healthz` check returns `200 OK`.
-- Parameters pass explicit endpoint bindings down to background tasks registered inside Windows Task Scheduler (`AI-RAG-Dev` and `AI-RAG-Hobby`), tracking folder changes instantly At LogOn.
+* Instantiates a pristine, official Qdrant database node container via Docker Compose (port `6333`). To preserve system safety under strict multi-user loads, the container is locked to a 2GB RAM ceiling with hardware caps (`cpus: 2`), forcing a complete memory-mapped vector translation threshold (`QDRANT__VECTORS__MEMMAP_THRESHOLD=0`) to load layers directly from fast NVMe storage.
+* Asserts an active HTTP `200 OK` health-check verification loop targeting the valid `http://127.0.0` URI.
+* Registers the background `qdrant_watcher.py` file-tracker via Windows Task Scheduler (`AI-RAG-Dev`), and registers the host-level `qdrant_mcp.py` SSE web server as a persistent service via `NSSM` running under the current user's profile account.
 
 ### 6. `Aider\aider_deploy.ps1` (Guest Environment Sync / Aider Folder)
-- Mounts and runs `aider_deploy.sh` inside WSL guest shell environment. Configures global `config.yml` dependencies, updating path structure variables dynamically.
-- Flattens and synchronization resource payloads directly from active environment host paths `~/.ai/context/*` over to destination guest subsystem paths `~/.aider/*`.
+* Mounts and runs `aider_deploy.sh` inside the WSL2 guest shell environment. Pins the client environment to a locked version (`aider-chat==0.74.0`) via `pipx` to eliminate upstream runtime configuration drifts.
+* Dynamically resolves modular cross-folder path tokens using the `.Parent` descriptor to safely extract and copy the `qdrant_mcp.py` bridge directly into the user workspace inside WSL.
 
 ---
 
 ## 5. REAL-TIME KNOWLEDGE INDEXING PIPELINE (RAG)
 
 ### Windows Watcher (`qdrant_watcher.py` inside `~/.ai/.qdrant/`)
-- Relies on **`watchfiles`** high-performance library core utilizing non-blocking Rust file system auditing loops.
-- Runtime Arguments: Parameterized via `argparse` to accept `--vault`, `--collection`, `--port`, and `--ai-url` flags dynamically, allowing infinite isolated background instances to run concurrently.
-- Self-Stabilizing feature: Contains async wait loops checking `libs.wait_for_qdrant` on startup. Blocks execution until Docker Desktop/Qdrant container comes alive after system boot to prevent network spam.
-- Chunking & Embedding: Strips YAML frontmatter, resolves recursive `![[transclusions]]` graph layers, flattens internal `[[wiki-links]]`, splits text structurally via `MarkdownHeaderTextSplitter` keeping header contexts, fetches vectors from universal `get_embedding` factory block, wipes obsolete file points from Qdrant, and bulk uploads new vectors into collection asynchronously.
-- Core Data Isolation Matrix:
-  - Coding and software architectural vectors reside in the separate Qdrant collection (`db-dev`) and ingest documents from the isolated engineering Obsidian vault (`v-dev`).
-  - Hobby assistance vectors (war history, aviation, scale modeling) reside in the separate Qdrant collection (`db-hobby`) and ingest documents from the isolated personal Obsidian vault (`v-hobby`).
+* Relies on the **`watchfiles`** high-performance library core utilizing non-blocking Rust file system auditing loops.
+* **Self-Stabilizing Core:** Contains a non-blocking asynchronous `libs.wait_for_qdrant` hook on startup. If Docker Desktop or the Qdrant container is offline, it loops gracefully checking the health socket every 5 seconds using native lightweight `urllib.request` polling blocks, avoiding high CPU spikes and crash loops.
+* **Asynchronous I/O Consistency:** All heavy synchronous file system operations (`with open()`, `read()`, and recursive note transclusions `![[Note]]`) are completely offloaded from the main event loop thread via an isolated internal function executed inside an explicit `asyncio.to_thread()` worker boundary.
+* **Deterministic Identity Mapping:** Generates point IDs by hashing strictly the combination of the absolute file path and the chunk index (`hash(f'{file_path}_{i}')`). This completely eliminates the legacy `time.time()` token leakage, preventing double-indexing collisions and database bloat.
+* **CPU-Backed Embedding Layer:** Extracts vectors by calling the local `SentenceTransformer` engine (`nomic-ai/nomic-embed-text-v1.5`) running strictly on the host CPU boundary (`device="cpu"`) to save VRAM. It injects mandatory Nomic v1.5 API prefixes (`search_document: `) to align the calculated cosine distance matrix.
+* **Multi-Zone Data Isolation Matrix:**
+  * Coding and enterprise software architectural vectors reside in the `db-dev` collection and process documents from the isolated engineering Obsidian vault (`E:\Vaults\v-dev`).
+  * Hobby assistance vectors reside in the separate `db-hobby` collection and process documents from the isolated personal Obsidian vault (`E:\Vaults\v-hobby`).
 
-### WSL MCP Server Bridge (`qdrant_mcp.py` inside WSL `~/.aider/`)
-- Implements low-level **`mcp.server`** primitives communicating with Aider runtime via native stdio transport pipelines. Fully asynchronous (`asyncio` + `httpx`).
-- Multi-Collection Mapping: Parameterized via `--collection` flag execution parameters to dynamically attach the corresponding stdio instance to a targeted vector space workspace.
-- Explicit Identity Hydration Layer:
-  - Exposes two distinct tool definitions: `search_knowledge_base` (general RAG context search) and `hydrate_project_context` (targeted systemic workspace profile loading).
-  - Triggers on direct name greetings/markers (`Жорвис`, `Айдэр`, `Макс`) or explicit `[MARKER HYDRATE]` token presence at the opening line of a conversation. The model (Qwen) fires an automated `<tool_call>` passing the name token into the `context_key` slot.
-  - If no name or role token is successfully extracted, the model immediately halts code generation and prompts the user to select an explicit teammate identity to initialize.
-  - The script pulls explicit markdown playbooks directly from the vector storage, performing a live runtime **Context Hydration** injection to mutate model weights into the targeted persona rules without blowing context limits.
+### Windows FastMCP Server Service (`qdrant_mcp.py` inside `~/.ai/.qdrant/`)
+* Implements a highly scalable, asynchronous **`FastMCP`** server exposed as an independent network node using the `SSE HTTP` transport protocol listening on `127.0.0.1:8000`.
+* **Lazy-Loading Synchronization:** Blocks the initialization thread upon service start via `loop.run_until_complete()` until the underlying Qdrant container passes health handshakes. If the database drops, the service stays alive in a non-blocking wait lock, logging clean data streams to `~/.ai/log/qdrant-mcp.log`.
+* **Shared Library Integration:** Completely stripped of redundant text-splitters and mathematical modeling layers. It imports the unified `libs.py` single source of truth module to calculate query embeddings on the host CPU using the correct `search_query: ` API prefix notation.
+* **Explicit Identity Hydration Layer:**
+  * Exposes the `search_knowledge_base` tool to extract markdown context layers matching the project language. It analyzes Cyrillic presence via `libs.detect_language()` to dynamically filter metadata using file naming conventions (`-RU` or `-EN`).
+  * Listens to the single lightweight prompt token trigger `[MARKER HYDRATE] $ROLE` passed by `aider_run.sh`. The model captures this indicator at the opening line of a conversation, immediately intercepts execution, and forces the FastMCP tool to pull explicit markdown playbooks directly from the vector storage. This performs an on-demand runtime **Context Hydration** injection to mutate the model's persona without blowing out context limits.
 
 ### Obsidian Ecosystem Constraints
-- Model Inference Gateway: Powered by `BMO Chatbot` or `Text Generator` plugins. The engineering vault (`v-dev`) targets the LiteLLM host proxy loopback (`http://127.0.0.1:8000`) using model mapping to mimic `claude-sonnet-4-6`. The hobby vault (`v-hobby`) targets the local Ollama daemon directly (`http://127.0.0.1:11434`) to drive `Gemma-4 12B` prompts.
-- Code Environment Sync: Enforces strict layout rendering and document sanitization via `Editor Syntax Highlight` (token coloring match for JS/TS/PowerShell/INI), `Advanced URI` (system-wide execution paths bridging IDE links), and `Linter` (strict markdown syntax verification on save).
-
+* **Model Inference Gateway:** Driven by local chatbot plugins. The engineering vault targets the local llama-swap host proxy gateway loopback (`http://127.0.0`) using model mapping to call virtual Claude endpoints. The hobby vault targets the local Qdrant REST API container node directly (`http://127.0.0.1:6333`) to run semantic vector queries.
+* **Code Environment Sync:** Enforces strict layout rendering and document sanitization via `Editor Syntax Highlight` (token coloring match for JS/TS/PowerShell/INI), `Advanced URI` (system-wide execution paths bridging IDE links), and `Linter` (strict markdown syntax verification on save).

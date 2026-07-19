@@ -1,16 +1,6 @@
-# Aider configuration blueprint for direct local Coder model execution
-model: openai/ollama/qwen3.6-moe-coder
-api-base: http://win-host:8000/v1
-openai-api-key: sk-sithedition-2026
-auto-commits: false
-attribute-author: true
-attribute-committer: true
-edit-format: diff
-stream: true
-cache-prompts: true
-
-# Declarative MCP server integration for host Qdrant RAG index loops
+# -----------------------------------------------------------------
+# Declarative FastMCP Network SSE Server Integration
+# -----------------------------------------------------------------
 mcp-servers:
   qdrant-rag:
-    cmd: python3
-    args: ["~/.aider/qdrant_mcp.py"]
+    url: "http://win-host:8000/sse"

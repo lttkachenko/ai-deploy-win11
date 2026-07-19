@@ -47,12 +47,16 @@ if (Test-Path $localConfigFile) {
   throw "[FATAL] Declarative configuration template config.yml missing from source directory."
 }
 
-# 5. Synchronize Execution Runner and MCP Bridge Assets
+# 5. Synchronize Execution Runner and MCP Bridge Assets (FIXED AGNOSTIC PATHS)
+Write-Host ">>> Synchronizing execution runners and FastMCP bridge..." -ForegroundColor Yellow
 $localRunScript = Join-Path $PSScriptRoot "aider_run.sh"
-$localMcpScript = Join-Path $PSScriptRoot "..\Qdrant\qdrant_mcp.py"
+
+# Resolving cross-modular path safely using .Parent descriptor to eliminate fragile '..' literals
+$distRoot = (Get-Item $PSScriptRoot).Parent.FullName
+$localMcpScript = Join-Path $distRoot "Qdrant\qdrant_mcp.py"
 
 if (-not (Test-Path $localRunScript)) { throw "[FATAL] Core script 'aider_run.sh' missing from source directory." }
-if (-not (Test-Path $localMcpScript)) { throw "[FATAL] MCP bridge asset 'qdrant_mcp.py' missing from Qdrant directory." }
+if (-not (Test-Path $localMcpScript)) { throw "[FATAL] MCP bridge asset 'qdrant_mcp.py' missing from resolved Qdrant root: $localMcpScript" }
 
 $wslRunPath = wslpath "`$localRunScript"
 $wslMcpPath = wslpath "`$localMcpScript"

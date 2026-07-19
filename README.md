@@ -67,18 +67,21 @@ Mounts and fires the `aider_deploy.sh` script inside the WSL2 guest shell enviro
 
 ## RAG & Vector Space Topology
 
-The Real-Time Knowledge Indexing Pipeline operates with strict data isolation on a fully non-blocking asynchronous architecture (`asyncio` + `AsyncQdrantClient`). It prevents context leakage between programming specifications and general hobby workflows by using two distinct Obsidian vaults and two isolated Qdrant vector collections.
+The Real-Time Knowledge Indexing Pipeline operates with strict data isolation on a fully non-blocking asynchronous architecture (`asyncio` + `AsyncQdrantClient`). It prevents context leakage between enterprise engineering architectures and personal hobby workflows by using two distinct Obsidian vaults and two isolated Qdrant vector collections.
+To secure your host's strict 6GB VRAM allocation threshold, both pipelines bypass external inference dependencies (purging Ollama/LiteLLM HTTP blocks) and leverage the unified `get_embedding` factory engine inside `libs.py` executing **strictly on the host CPU boundary** utilizing the lightweight `nomic-embed-text-v1.5` model (dimension `768`) over `MarkdownHeaderTextSplitter` structures. All file parsing, Markdown splitting, and tensor extractions are entirely offloaded from the main event loop thread via `asyncio.to_thread()` allocations to guarantee fail-soft execution boundaries.
+The pipeline complies with native Nomic specifications by forcing `search_document: ` prefixes for filesystem ingestion loops and `search_query: ` prefixes for FastMCP query tools.
 
-Both pipelines leverage the unified `get_embedding` factory engine inside `libs.py` to seamlessly parse vector dimensions from either Ollama (`/api/embed`) or OpenAI/LM-Studio (`/v1/embeddings`) utilizing the lightweight **`nomic-embed-text`** model (dimension `768`) over `MarkdownHeaderTextSplitter` structures.
+### Development & Engineering Stream (db-dev)
+* **Host Obsidian Vault Path:** `~\Vaults\v-dev`
+* **Target Qdrant Collection ID:** `db-dev`
+* **File Watcher Loop Engine:** Asynchronous, Rust-backed `watchfiles` worker monitoring real-time filesystem mutations, recursive Wiki-note transclusions `![[Note]]`, and metadata frontmatter stripping.
+* **Context Delivery Protocol:** Persistent host-level `qdrant_mcp.py` network service managed via `NSSM`, exposing an `SSE HTTP` transport stream on port 8000 for Aider (WSL), Cline (VS Code), and JetBrains IDE agents.
+* **Content Scope:** System devops contexts, personalized user profiles, coding standards, corporate architecture blueprints, language-specific API maps, and enterprise rules.
 
-### Development & Engineering Stream (`db-dev`)
-*   **Host Obsidian Vault:** `E:\Vaults\v-dev`
-*   **Target Qdrant Collection:** `db-dev`
-*   **Intended Consumers:** Local `Qwen` models routing context through non-blocking, multithreaded `mcp.server` stdio transport pipelines (`qdrant_mcp.py` operating inside WSL).
-*   **Content Scope:** System contexts, personalized user profiles, coding standards, language-specific API maps, and enterprise architecture patterns.
+### Personal Hobby Stream (db-hobby)
+* **Host Obsidian Vault Path:** `~\Vaults\v-hobby`
+* **Target Qdrant Collection ID:** `db-hobby`
+* **File Watcher Loop Engine:** Independent async `watchfiles` worker instance tracking mutations concurrently inside the hobby directory boundary.
+* **Context Delivery Protocol:** Localized `Gemma-4 12B` and `Qwen` instances querying the `127.0.0.1:6333` Qdrant REST API node directly via internal Obsidian chatbot plugins or local client extensions.
+* **Content Scope:** Military history datasets, aviation records, engineering schematics, and scale modeling databases.
 
-### Personal Hobby Stream (`db-hobby`)
-*   **Host Obsidian Vault:** `E:\Vaults\v-hobby`
-*   **Target Qdrant Collection:** `db-hobby`
-*   **Intended Consumers:** Local `Gemma-4 12B` queried directly inside the Obsidian environment via local chatbot plugins.
-*   **Content Scope:** Military history, aviation records, and scale modeling databases.
