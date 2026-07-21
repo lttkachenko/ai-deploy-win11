@@ -3,11 +3,35 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com).
 
-## [Unreleased] - DOS-7 (2026-07-19)
+## [Development Snapshot] - DOS-8 (2026-07-20)
+
+### Added
+- (DOS-8) - Introduced a strict, recursive macro interpolation engine in `models_deploy.ps1` to expand nested environment tokens (e.g., `%USERPROFILE%`, `${models}`) into verified, absolute Win32 path targets.
+- (DOS-8) - Standardized the model ingestion workflow to automatically map Hugging Face direct web streams into a structured nested layout matching LM Studio directory topology (`models/author/repo/file.gguf`).
+- (DOS-8) - Implemented deep variable parsing to handle polymorphic `source`, `hf_name`, and `quant` keys anywhere inside the YAML configuration sub-scopes without relying on brittle indentation-based line processing.
+
+### Modified
+- (DOS-8) - Deprecated the unstable, interactive `lms get` CLI command sequence due to unbypassable TTY Win32 Console ReadKey locks and pseudo-graphic prompt blocks.
+- (DOS-8) - Unified all network downloading processes by offloading heavy GGUF and mmproj weight ingestion routines directly to the centralized, multi-threaded `Utils\asset_downloader.ps1` script core.
+- (DOS-8) - Forced the model download pipeline to retain strict, immutable case sensitivity across author names, repositories, and filenames to satisfy Hugging Face CDN routing rules.
+
+### Fixed
+- (DOS-8) - Purged the catastrophic `-or` logical evaluation bug from `Utils\asset_downloader.ps1` that routinely corrupted the internal PowerShell argument expression parser.
+- (DOS-8) - Eliminated duplicate Win32 firewall rule generation collisions (`New-NetFirewallRule`) by dynamically sealing ingress rule identifiers to unique target socket port names.
+- (DOS-8) - Resolved silent multi-gigabyte download corruption blocks by eliminating global string formatting (`.ToLower()`) on direct web stream endpoints.
+- (DOS-8) - Mitigated a severe runtime block in `pyparts_deploy.ps1` by shifting `pip` upgrades to a safe module invocation layout (`python -m pip`), bypassing active execution binary file locks on Windows environments.
+
+### Known Issues
+- **SCM Service Context Redirection**: Spawning the `llama-swap-service` background daemon under the default `LocalSystem` account prunes active user profiles. The configuration engine must dynamically replace all `%USERPROFILE%` environment tokens with expanded absolute disk paths on the fly prior to saving `llama-swap.conf.yml` to prevent the Go parser from crashing inside `System32\config\systemprofile`.
+- **WSL Deprecation Noise Leakage**: Legacy configuration keys inside host machines (e.g., `wsl2.pageReporting` in older `.wslconfig` setups) force `wsl.exe` to constantly flood the standard error (`Stderr`) stream. PowerShell cross-boundary wrappers must explicitly redirect error streams (`2>$null`) during cold instance checks to prevent system diagnostics noise from corrupting data delivery logs.
+- **Node.js/Go Interactive TTY Hijacking**: CLI binaries that construct pseudo-graphic terminal dropdowns or raw keypress confirmation prompt blocks (like `lms get`) completely isolate standard input (`StandardInput.WriteLine`). They ignore automated text pipes (`echo y |`) and headless flags, requiring complete execution bypass or strict programmatic non-interactive mode isolation via native web transfer streams (`Invoke-WebRequest`).
+- **Pydantic/FastMCP Dependency Hell**: The Anthropic `mcp` core transport package forces strict runtime constraints requiring `pydantic>=2.11.0`. Hardcoding older version definitions (`pydantic==2.7.1`) inside development manifests creates severe silent event loop collisions, requiring global baseline enforcement across all orchestrator rigs.
+
+## [Development Snapshot] - DOS-7 (2026-07-19)
 
 ### Added
 - (DOS-7) - Integrated `llama-swap` Go-backed proxy gateway on the host to manage the lazy execution loop lifecycle of native C++ `llama-server` instances.
-- (DOS-7) - Implemented strict 6GB VRAM allocation caps and sequential request throttling (`concurrency: 1`) via a centralized `config.yml` layout.
+- (DOS-7) - Implemented strict 6GB VRAM allocation caps and sequential request throttling (`concurrency: 1`) via a centralized `llama-swap.conf.yml` layout.
 - (DOS-7) - Replicated LiteLLM prompt template anchors by natively injecting the multi-layer spec prompt (`[MARKER HYDRATE]` and `IDENTITY HYDRATION` policy) into `llama-server` via the `--system-prompt-file` argument.
 - (DOS-7) - Migrated the containerized FastMCP server (`qdrant_mcp.py`) directly to the host network boundary as a persistent background Windows service using the `NSSM` wrapper.
 - (DOS-7) - Swapped out stdout transport protocols inside the FastMCP server for a unified network-accessible `SSE HTTP` web server structure listening on port 8000.
@@ -24,9 +48,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-7) - Eliminated duplicate vector node allocations inside `libs.py` by removing the unstable `time.time()` string slice from the `point_id` hash algorithm.
 - (DOS-7) - Resolved critical Python async consistency block errors by wrapping the heavy synchronous `.encode()` method inside `asyncio.to_thread()`, moving CPU tensor generation entirely off the main event loop thread.
 - (DOS-7) - Fixed I/O blocking blocks inside `libs.py` by wrapping standard synchronous `open()` and recursive transclusion file reads inside an isolated `asyncio.to_thread()` pipeline.
-- (DOS-7) - Corrected Sonar / Linter security hotspot flags inside `qdrant_deploy.ps1` by expanding the truncated health-check address to a valid production `http://127.0.0` URI.
+- (DOS-7) - Corrected Sonar / Linter security hotspot flags inside `qdrant_deploy.ps1` by expanding the truncated health check address to a valid production `http://127.0.0` URI.
 
-## - DOS-6 (2026-07-17)
+## [Development Snapshot] - DOS-6 (2026-07-17)
 
 ### Added
 - (DOS-6) - Overhauled the entire RAG pipeline python layer (`libs.py`, `qdrant_watcher.py`, `qdrant_mcp.py`) to fully asynchronous execution topology using `asyncio` and `httpx`.
@@ -45,7 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-6) - Mitigated major memory leaks inside WSL2 by forcing `QDRANT__VECTORS__MEMMAP_THRESHOLD=0` in `docker-compose.yml`, shifting vector storage execution boundaries out of RAM down to raw NVMe disk mapping.
 - (DOS-6) - Resolved a silent async execution failure inside `libs.py` by applying proper `await` keywords to Qdrant client storage mutations (`delete`, `upsert`), correcting core memory-mapped collection pipeline drops.
 
-## - 2026-07-08
+## [Development Snapshot] - 2026-07-08
 
 ### Added
 - (DOS-2) - Implemented a multi-zone RAG data architecture featuring strict context isolation between engineering and hobby knowledge bases.
@@ -56,7 +80,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-2) - Resolved a critical HTTP 404 crash inside `qdrant_watcher.py` by mapping the target Ollama payload explicitly to the updated `/api/embed` endpoint.
 - (DOS-2) - Fixed vector parsing exceptions by re-engineering the response interpreter to extract structured arrays from the modern `embeddings` JSON key.
 
-## - 2026-07-07
+## [Development Snapshot] - 2026-07-07
 
 ### Added
 - (DOS-1) - Integrated FastMCP python framework bindings inside WSL (`qdrant_mcp.py`) to expose real-time context injections to the Aider runtime agent via stdio transport channels.

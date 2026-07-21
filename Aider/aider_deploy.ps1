@@ -39,12 +39,12 @@ if (Test-Path $localDeployScript) {
 
 # 4. Deliver Modular Configurations via Pure Transport Protocol
 Write-Host ">>> Aligning global configuration parameters..." -ForegroundColor Yellow
-$localConfigFile = Join-Path $PSScriptRoot "config.yml"
+$localConfigFile = Join-Path $PSScriptRoot "llama-swap.conf.yml"
 if (Test-Path $localConfigFile) {
   $wslConfigPath = wslpath "`$localConfigFile"
-  & wsl cp "$wslConfigPath" "$wslHome/.aider/config.yml"
+  & wsl cp "$wslConfigPath" "$wslHome/.aider/llama-swap.conf.yml"
 } else {
-  throw "[FATAL] Declarative configuration template config.yml missing from source directory."
+  throw "[FATAL] Declarative configuration template llama-swap.conf.yml missing from source directory."
 }
 
 # 5. Synchronize Execution Runner and MCP Bridge Assets (FIXED AGNOSTIC PATHS)

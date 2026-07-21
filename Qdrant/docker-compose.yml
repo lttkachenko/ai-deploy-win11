@@ -8,16 +8,17 @@ services:
       - '6333:6333'
       - '6334:6334'
     volumes:
-      - type: bind
-        source: ${USERPROFILE}\.ai\.qdrant\storage
-        target: /qdrant/storage
+      - qdrant_storage:/qdrant/storage
     deploy:
       resources:
         limits:
           cpus: '2'
           memory: 2GB
     environment:
-      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=2
-      # Absolute optimization: bypass memory-heavy RAM vectors allocations
+      - QDRANT__STORAGE__PERFORMANCE__eMAX_SEARCH_THREADS=2
       - QDRANT__VECTORS__MEMMAP_THRESHOLD=0
     restart: unless-stopped
+
+volumes:
+  qdrant_storage:
+    driver: local

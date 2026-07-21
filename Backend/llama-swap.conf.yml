@@ -1,0 +1,96 @@
+# =================================================================
+# Llama-Swap Enterprise Configuration Matrix
+# Official single source of truth according to mostlygeek/llama-swap spec
+# =================================================================
+
+# -----------------------------------------------------------------
+# Centralized Environment Global Variables & Asset Layouts
+# -----------------------------------------------------------------
+macros:
+  global_repo: 'https://huggingface.co'
+  resolve: resolve/main
+  ai_root: '%USERPROFILE%/.ai'
+  models: ${ai_root}/models
+  context: ${ai_root}/context
+  qwen_35b: Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive
+  qwen_35b_path: ${models}/HauhauCS/${qwen_35b}/${qwen_35b}-Q4_K_M.gguf
+  gemma4_12b: gemma-4-12B-it
+  gemma4_12b_path: ${models}/lmstudio-community/${gemma4_12b}-GGUF/${gemma4_12b}-Q4_K_M.gguf
+  qwen_coder: Qwen2.5-Coder-1.5B-Instruct
+  qwen_coder_path: ${models}/unsloth/${qwen_coder}-GGUF/${qwen_coder}-Q2_K.gguf
+  sys_prompt: ${context}/system_prompt.txt
+
+# -----------------------------------------------------------------
+# API Routing Grid & Native Inference Commands
+# -----------------------------------------------------------------
+models:
+  # 1. Heavy Coder Profile Route
+  claude-opus-4-8:
+    model_source: ${global_repo}/HauhauCS/${qwen_35b}@Q4_K_M
+    model_url: ${global_repo}/HauhauCS/${qwen_35b}/${resolve}/${qwen_35b}-Q4_K_M.gguf
+    model_quant: Q4_K_M
+    mmproj_source: ${global_repo}/HauhauCS/${qwen_35b}@F16
+    mmproj_url: ${global_repo}/HauhauCS/${qwen_35b}/${resolve}/mmproj-${qwen_35b}-f16.gguf
+    mmproj_quant: F16
+    ttl: 300
+    cmd: |
+      llama-server
+      --model ${qwen_35b_path}
+      --ctx-size 8192
+      --n-gpu-layers -1
+      --port ${PORT}
+      --parallel 1
+      --cont-batching
+      --system-prompt-file ${sys_prompt}
+
+  claude-sonnet-4-6:
+    model_source: ${global_repo}/HauhauCS/${qwen_35b}@Q4_K_M
+    model_url: ${global_repo}/HauhauCS/${qwen_35b}/${resolve}/${qwen_35b}-Q4_K_M.gguf
+    model_quant: Q4_K_M
+    mmproj_source: ${global_repo}/HauhauCS/${qwen_35b}@F16
+    mmproj_url: ${global_repo}/HauhauCS/${qwen_35b}/${resolve}/mmproj-${qwen_35b}-f16.gguf
+    mmproj_quant: F16
+    ttl: 300
+    cmd: |
+      llama-server
+      --model ${qwen_35b_path}
+      --ctx-size 8192
+      --n-gpu-layers -1
+      --port ${PORT}
+      --parallel 1
+      --cont-batching
+      --system-prompt-file ${sys_prompt}
+
+  # 2. Multimodal Reasoner Profile Route
+  gemma4-12b:
+    model_source: ${global_repo}/lmstudio-community/${gemma4_12b}-GGUF@Q4_K_M
+    model_url: ${global_repo}/lmstudio-community/${gemma4_12b}-GGUF/${resolve}/${gemma4_12b}-Q4_K_M.gguf
+    model_quant: Q4_K_M
+    mmproj_source: ${global_repo}/lmstudio-community/${gemma4_12b}/${gemma4_12b}@BF16
+    mmproj_url: ${global_repo}/lmstudio-community/${gemma4_12b}-GGUF/${resolve}/mmproj-${gemma4_12b}-BF16.gguf
+    mproj_quant: BF16
+    ttl: 300
+    cmd: |
+      llama-server
+      --model ${gemma4_12b_path}
+      --ctx-size 4096
+      --n-gpu-layers -1
+      --port ${PORT}
+      --parallel 1
+      --cont-batching
+      --system-prompt-file ${sys_prompt}
+
+  # 3. Light Coder Profile Route
+  claude-haiku-4-5:
+    model_source: ${global_repo}/unsloth/${qwen_coder}-GGUF@Q4_K_M
+    model_url: ${global_repo}/unsloth/${qwen_coder}-GGUF/${resolve}/${qwen_coder}-Q2_K.gguf
+    model_quant: Q2_K
+    ttl: 300
+    cmd: |
+      llama-server
+      --model ${qwen_coder_path}
+      --ctx-size 4096
+      --n-gpu-layers -1
+      --port ${PORT}
+      --parallel 1
+      --cont-batching

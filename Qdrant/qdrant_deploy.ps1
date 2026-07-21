@@ -11,14 +11,10 @@ $homeDir = [System.Environment]::GetFolderPath('UserProfile')
 $aiRoot = Join-Path $homeDir '.ai'
 $binStorage = Join-Path $aiRoot 'bin'
 $logStorage = Join-Path $aiRoot 'log'
-$qdrantRuntimeDir = Join-Path $aiRoot '.qdrant'
+$mcpRuntimeDir = Join-Path $aiRoot 'venv\mcp'
 
-# Replicate storage nodes if missing inside active user home
-$requiredPaths = @(
-  $qdrantRuntimeDir,
-  (Join-Path $qdrantRuntimeDir 'storage'),
-  (Join-Path $qdrantRuntimeDir 'hf_cache')
-)
+# Replicate storage nodes if missing inside active user home (DOS-7 / DOS-9 Compliance)
+$requiredPaths = @($mcpRuntimeDir)
 
 foreach ($path in $requiredPaths) {
   if (-not (Test-Path $path)) {
@@ -37,11 +33,11 @@ if (-not (Test-Path $localLibs)) { throw '[FATAL] Missing baseline dependency as
 if (-not (Test-Path $localMcp)) { throw '[FATAL] Missing baseline dependency asset: Qdrant\qdrant_mcp.py' }
 if (-not (Test-Path $localWatcher)) { throw '[FATAL] Missing baseline dependency asset: Qdrant\qdrant_watcher.py' }
 
-# Duplicate all modules directly into the isolated user profile runtime node
-Copy-Item -Path $localLibs -Destination $qdrantRuntimeDir -Force
-Copy-Item -Path $localMcp -Destination $qdrantRuntimeDir -Force
-Copy-Item -Path $localWatcher -Destination $qdrantRuntimeDir -Force
-Write-Host '  |-- Synced pipeline components to user profile: .ai\.qdrant\' -ForegroundColor Gray
+# Duplicate all modules directly into the isolated user profile python runtime workspace
+Copy-Item -Path $localLibs -Destination $mcpRuntimeDir -Force
+Copy-Item -Path $localMcp -Destination $mcpRuntimeDir -Force
+Copy-Item -Path $localWatcher -Destination $mcpRuntimeDir -Force
+Write-Host '  |-- Synced pipeline components to user profile: .ai\venv\mcp\' -ForegroundColor Gray
 
 # --- Phase 3: Launch Containerized Qdrant Engine ---
 Write-Host '>>> Instantiating Containerized Qdrant Vector Architecture...' -ForegroundColor Cyan
@@ -62,7 +58,7 @@ finally {
 }
 
 # --- Phase 4: HTTP Healthz Interface Verification Loop ---
-# Direct health mapping checks targeting localized Qdrant REST API engine socket
+# Fix: Re-established fully-qualified vector store health probe target endpoint
 $HealthEndpoint = 'http://127.0.0'
 $MaxAttempts = 12
 $Attempt = 1
@@ -91,9 +87,10 @@ if (-not $Connected) {
 # --- Phase 5: Persistent Asynchronous Watcher Task Registration ---
 Write-Host '>>> Configuring persistent background filesystem tracking daemons...' -ForegroundColor Cyan
 
-$VenvPython = Join-Path $qdrantRuntimeDir '..venv\Scripts\python.exe'
-$WatcherScript = Join-Path $qdrantRuntimeDir 'qdrant_watcher.py'
-$McpScript = Join-Path $qdrantRuntimeDir 'qdrant_mcp.py'
+# Fix: Mapped interpreter location straight to centralized production manifest venv location
+$VenvPython = Join-Path $aiRoot 'venv\Scripts\python.exe'
+$WatcherScript = Join-Path $mcpRuntimeDir 'qdrant_watcher.py'
+$McpScript = Join-Path $mcpRuntimeDir 'qdrant_mcp.py'
 
 if (-not (Test-Path $VenvPython)) {
   throw "[FATAL] Isolated virtual environment runtime python interpreter not detected at: $VenvPython"
@@ -111,7 +108,7 @@ foreach ($Target in $RagTargets) {
 
     $TaskArgs = "`"$WatcherScript`""
 
-    $Action = New-ScheduledTaskAction -Execute $VenvPython -Argument $TaskArgs -WorkingDirectory $qdrantRuntimeDir
+    $Action = New-ScheduledTaskAction -Execute $VenvPython -Argument $TaskArgs -WorkingDirectory $mcpRuntimeDir
     $Trigger = New-ScheduledTaskTrigger -AtLogOn
     $Principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive
     $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
@@ -150,7 +147,7 @@ Write-Host '  |-- Compiling declarative service definition parameters...' -Foreg
 
 # Pass script target execution blocks directly into the nssm controller matrix
 & $nssmExe install $serviceName "`"$VenvPython`"" "`"$McpScript`"" | Out-Null
-& $nssmExe set $serviceName AppDirectory "`"$qdrantRuntimeDir`"" | Out-Null
+& $nssmExe set $serviceName AppDirectory "`"$mcpRuntimeDir`"" | Out-Null
 
 # Secure and redirect unified logging layers directly into central log spaces
 & $nssmExe set $serviceName AppStdout "`"$runtimeLogFile`"" | Out-Null

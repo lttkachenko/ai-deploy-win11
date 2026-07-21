@@ -43,6 +43,9 @@ Distribution Package Root is set to `~d\` in this document for explanatory purpo
 |   |-- 📄 qdrant_deploy.ps1     # Synces Python assets, validates healthz, mounts watcher tasks and NSSM MCP service
 |   |-- 📄 qdrant_mcp.py         # Async host FastMCP tool exposing non-blocking SSE HTTP streams on port 8000
 |   `-- 📄 qdrant_watcher.py     # High-performance async file-system auditor leveraging Rust-backed watchfiles loop
+|-- 📂 Utils\
+|   |-- 📄 qdrant_mcp.py         # Async host FastMCP tool exposing non-blocking SSE HTTP streams on port 8000
+|   `-- 📄 qdrant_watcher.py     # High-performance async file-system auditor leveraging Rust-backed watchfiles loop
 |-- 📄 infra_deploy.ps1          # Unified master orchestration engine routing all deployment lifecycle phases
 |-- 📄 models_deploy.ps1         # Safe declarative downloader pipeline pulling GGUF weights directly from Hugging Face
 `-- 📄 network_setup.ps1         # Rebuilds firewall rules (LocalSubnet) and Netsh PortProxy vEthernet tunnels
@@ -53,26 +56,32 @@ Production User Profile Runtime Root: `~/.ai/` (`C:\Users\<User>\.ai\`)
 ### Destination Directory Layout
 ```text
 📂 ~/.ai/
-|-- 📂 bin/               # Centralized repository for native binaries (llama-swap.exe, llama-server.exe, nssm.exe, config.yml)
+|-- 📂 .venv/             # Python virtual environment persistent location
+|    `-- 📂 mcp/          # Python MCP Server and MCP Watcher / Chunker / Embedder repository and working directory
+|-- 📂 bin/               # Centralized repository for native binaries (llama-swap.exe, llama-server.exe, nssm.exe)
+|-- 📂 conf/              # Centralized repository for service configs (llama-swap.conf.yml, etc.)
 |-- 📂 log/               # Consolidated enterprise telemetry room tracking llama-swap.log and qdrant-mcp.log
 |-- 📂 models/            # Pure data asset layer hosting downloaded Q4_K_M and IQ4_NL GGUF weight matrices
-|-- 📂 .qdrant/           # Persistent docker storage binds and isolated .venv python sandbox environment
 `-- 📂 context/           # Mapped active bootstrap resource pool deployment root
-    |-- 📂 roles/         # AI Persona definition markdown files (zhorvis.md, aider.md, max.md)
+    |-- 📂 artifacts/     # AI Artifacts - Project / Architecture definition markdown files for AI
+    |-- 📂 insights/      # AI Insights - Insights collected by AI in the Project development process (markdown files for AI)    
     |-- 📂 prompts/       # Immediate session task instruction execution files
+    |-- 📂 roles/         # AI Persona definition markdown files
+    |-- 📂 skills/        # AI Skills definition markdown files
+    |-- 📂 tools/         # AI Tools / Toolchains definition markdown files        
     `-- 📂 user/          # Core personalized profile constraints (User-RU.md, User-EN.md)
 
 ```
 
 ## 3. CORE INFRASTRUCTURE CONFIGURATIONS (REVISED)
 
-### Llama-Swap `config.yml`
+### Llama-Swap `llama-swap.conf.yml`
 Exposes the single source of truth for local model virtualization and routing. Driven by a fast Go-backed proxy gateway on the Windows Host listening strictly on the loopback interface (`127.0.0.1:1234`) to completely bypass Hyper-V zero-address binding bugs. Managed as a persistent, headless background Windows service via the `NSSM` daemon running under the active user session context. It enforces strict sequential execution (`concurrency: 1`) to lock maximum VRAM utilization to a hard **6GB boundary** (out of 8GB physical host VRAM) and automatically evicts dead server processes from memory via an aggressive time-to-live (`ttl: 300s`) configuration layer.
 
 ### Native C++ `llama-server` Primitives
 Launched on-demand by the swap router proxy on isolated loopback ports (`8080`, `8081`, `8082`). It completely bypasses heavy Python/JS runtime overheads, loading quantum files (`IQ4_NL` / `Q4_K_M`) directly into the GPU CUDA grid via the `--n-gpu-layers -1` command parameter. It natively replicates old LiteLLM YAML anchors by reading the corporate specification instructions from a static file via the `--system-prompt-file` flag. The system prompt contains explicit `[MARKER L99]`, `[MARKER ULTRATHINK]`, and `[MARKER HYDRATE]` token layers, enforcing the absolute `[CRITICAL POLICY: IDENTITY HYDRATION]` guardrails.
 
-### Aider `config.yml` (Inside WSL: `~/.config/aider/config.yml`)
+### Aider `llama-swap.conf.yml` (Inside WSL: `~/.config/aider/config.yml`)
 Completely stripped of Ollama/LiteLLM pre-parsing prefix configurations. Routes execution streams directly to the host loopback port-proxy bridge via the standardized protocol format `model: openai/claude-sonnet-4-6` targeting the `http://win-host:1234/v1` gateway. Integrates the host-level FastMCP server node dynamically using the advanced `url: http://win-host:8000/sse` network transport block.
 
 ---

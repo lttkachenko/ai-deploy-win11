@@ -1,0 +1,45 @@
+{
+  "infrastructure": "enterprise-ai-stack",
+  "version": "0.1.0",
+  "dependencies": {
+    "backend": [
+      {
+        "name": "lm-studio-headless-daemon",
+        "alias": "llmster",
+        "version": "v0.4.19",
+        "bootstrap_url": "https://lmstudio.ai/install.ps1",
+        "bootstrap_command": "irm https://lmstudio.ai/install.ps1 | iex",
+        "binary": "lms.exe"
+      },
+      {
+        "name": "lm-studio-swap",
+        "alias": "llama-swap",
+        "version": "v240",
+        "url": "https://github.com/mostlygeek/llama-swap/releases/download/v240/llama-swap_240_windows_amd64.zip",
+        "bootstrap_command": "winget install llama-swap",
+        "binary": "llama-swap.exe"
+      },
+      {
+        "name": "nssm-service-wrapper",
+        "alias": "nssm_wrapper",
+        "version": "2.24",
+        "url": "https://nssm.cc/release/nssm-2.24.zip",
+        "target_file": "nssm.exe"
+      }
+    ],
+    "vector_engine": [],
+    "python_tooling": [
+      {
+        "name": "isolated-python-runtime",
+        "alias": "ai_venv",
+        "target_dir": ".ai/venv",
+        "packages": [
+          "fastmcp>=0.4.1",
+          "pydantic>=2.11.0",
+          "openai>=1.30.0",
+          "qdrant-client>=1.9.0"
+        ]
+      }
+    ]
+  }
+}

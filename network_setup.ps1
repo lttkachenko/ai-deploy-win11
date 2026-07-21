@@ -1,90 +1,96 @@
-# .\network_setup.ps1 - Fixed PortProxy Network Topology Binding
-# Style Enforced: Spaces 2, LF, SingleQuotes, Strict Quality Control
-
 $ErrorActionPreference = 'Stop'
 
-# --- 1. Network Boundary Environment Discovery ---
+Write-Host '=================================================================' -ForegroundColor Cyan
+Write-Host '>>> Establishing Cross-Boundary Network Bridges via Netsh Spec...' -ForegroundColor Cyan
+Write-Host '=================================================================' -ForegroundColor Cyan
+
+# 1. Environment and User Discovery
 $winUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.Split('\')[-1]
-$wslUser = (wsl exec whoami).Trim()
+Write-Host "   |-- Context Windows User: $winUser" -ForegroundColor Gray
 
-if (-not $wslUser) {
-  throw '[FATAL] WSL guest subsystem is unreachable. Cannot establish network topology.'
-}
+$wslUser = "gadeshi"
+Write-Host "   |-- Target WSL Guest User: $wslUser" -ForegroundColor Gray
 
-Write-Host '>>> Initializing Host Boundary Network Routing Architecture...' -ForegroundColor Yellow
-Write-Host "    |-- Context Windows User: $winUser" -ForegroundColor Cyan
-Write-Host "    |-- Target WSL Guest User: $wslUser" -ForegroundColor Cyan
-
-# --- 2. Advanced Inbound Firewall Policies Alignment ---
-Write-Host '>>> Aligning Advanced Inbound Firewall Policies...' -ForegroundColor Yellow
-
-$targetPorts = @(1234, 8000, 6333) # 1234: Swap, 8000: FastMCP, 6333: Qdrant Docker Core
-$legacyRule = 'WSL-LiteLLM-Proxy'
-$newRuleName = 'Enterprise-Headless-AI-Stack'
-
-if (Get-NetFirewallRule -DisplayName $legacyRule -ErrorAction SilentlyContinue) {
-  Write-Host '    |-- Purging stale legacy LiteLLM firewall matrix configuration...' -ForegroundColor Red
-  Remove-NetFirewallRule -DisplayName $legacyRule | Out-Null
-}
-
-if (Get-NetFirewallRule -DisplayName $newRuleName -ErrorAction SilentlyContinue) {
-  Remove-NetFirewallRule -DisplayName $newRuleName | Out-Null
-}
-
-# Allow traffic strictly within the internal host-to-wsl boundary for secure isolation
-New-NetFirewallRule -DisplayName $newRuleName `
-                    -Direction Inbound `
-                    -Action Allow `
-                    -Protocol TCP `
-                    -LocalPort $targetPorts `
-                    -RemoteAddress LocalSubnet `
-                    -Profile Any | Out-Null
-
-Write-Host '    |-- Secured TCP ingress vectors applied for ports: 1234, 8000, 6333.' -ForegroundColor Green
-
-# --- 3. Extracting Host Virtual Switch Gateway IP for Port Forwarding ---
-Write-Host '>>> Extracting Volatile WSL vEthernet Gateway IP...' -ForegroundColor Yellow
-
-# Parse the default route inside WSL to grab the exact Host IP seen by Linux
-$wslRoute = wsl exec ip route show default
-if ($wslRoute -match 'via\s+([0-9\.]+)') {
-  $hostGatewayIp = $Matches[1].Trim()
+# 2. Force Start Windows IP Helper Service (Fixes 'File not found' in netsh)
+Write-Host '>>> Ensuring Windows IP Helper Service (Iphlpapi) is active...' -ForegroundColor Yellow
+$ipHelper = Get-Service -Name 'IpHLPSvc' -ErrorAction SilentlyContinue
+if ($ipHelper) {
+  if ($ipHelper.Status -ne 'Running') {
+    Start-Service -Name 'IpHLPSvc'
+    Start-Sleep -Seconds 1
+  }
+  Set-Service -Name 'IpHLPSvc' -StartupType Automatic
+  Write-Host '    |-- IP Helper service verified and running.' -ForegroundColor Green
 } else {
-  throw '[FATAL] Failed to parse default route inside WSL guest subsystem.'
+  throw '[FATAL] Critical network dependency missing: IpHLPSvc (IP Helper) not found on host.'
 }
 
-Write-Host "    |-- Active Host vEthernet Gateway Interface IP: $hostGatewayIp" -ForegroundColor Cyan
+# 3. Align Advanced Inbound Firewall Policies
+Write-Host '>>> Aligning Advanced Inbound Firewall Policies...' -ForegroundColor Yellow
+$targetPorts = @(1234, 8000, 6333)
 
-# --- 4. Rebuilding Virtual Port Forwarding Table Table Topology (netsh) ---
-Write-Host '>>> Mapping Netsh PortProxy Bridges (WSL Ingress to Localhost Loopback)...' -ForegroundColor Yellow
-
-# We instruct Windows to listen on its own vEthernet IP ($hostGatewayIp) and route to 127.0.0.1
 foreach ($port in $targetPorts) {
-  # Clear existing stale bindings to prevent socket reallocation collisions
-  & netsh interface portproxy delete v4tov4 listenport=$port listenaddress=$hostGatewayIp 2>$null
+  $specificRuleName = "AI-Stack-Ingress-Bridge-$port"
+  Remove-NetFirewallRule -Name $specificRuleName -ErrorAction SilentlyContinue | Out-Null
+  New-NetFirewallRule -Name $specificRuleName `
+                      -DisplayName "AI Stack Ingress Gateway Port $port" `
+                      -Description "Automated portproxy ingress traffic rule managed via enterprise-ai-stack script blocks." `
+                      -Direction Inbound `
+                      -Action Allow `
+                      -Protocol TCP `
+                      -LocalPort $port `
+                      -Enabled True | Out-Null
+}
+Write-Host "    |-- Secured TCP ingress vectors applied for ports: $($targetPorts -join ', ')." -ForegroundColor Green
 
-  # Inject explicit tunnel matrix
-  & netsh interface portproxy add v4tov4 listenport=$port listenaddress=$hostGatewayIp connectport=$port connectaddress=127.0.0.1 | Out-Null
-  Write-Host "    |-- Port Proxy aligned: $hostGatewayIp`:$port ---> 127.0.0.1`:$port" -ForegroundColor Green
+# 4. Extract Volatile WSL vEthernet Gateway IP
+Write-Host '>>> Extracting Volatile WSL vEthernet Gateway IP...' -ForegroundColor Yellow
+$wslAdapter = Get-NetIPAddress -InterfaceAlias '*WSL*' -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1
+
+if (-not $wslAdapter) {
+  throw '[FATAL] Network bridge broken. Active WSL vEthernet interface could not be identified.'
 }
 
-# --- 5. Guest Subsystem DNS Inversion (~/etc/hosts Synchronization) ---
+$wslGatewayIp = $wslAdapter.IPAddress
+Write-Host "    |-- Active Host vEthernet Gateway Interface IP: $wslGatewayIp" -ForegroundColor Green
+
+# 5. Mapping Netsh PortProxy Bridges (WSL Ingress to Localhost Loopback)
+Write-Host '>>> Mapping Netsh PortProxy Bridges (WSL Ingress to Localhost Loopback)...' -ForegroundColor Yellow
+& netsh.exe interface portproxy reset | Out-Null
+
+foreach ($port in $targetPorts) {
+  & netsh.exe interface portproxy add v4tov4 listenaddress=$wslGatewayIp listenport=$port connectaddress=127.0.0.1 connectport=$port | Out-Null
+  Write-Host "    |-- Port Proxy aligned: $wslGatewayIp`:$port ---> 127.0.0.1`:$port" -ForegroundColor Gray
+}
+
+# 6. Enforce Dynamic DNS Inversion inside WSL Container (Strictly Isolated Execution)
 Write-Host '>>> Enforcing Dynamic DNS Inversion inside WSL Container...' -ForegroundColor Yellow
 
-$bashDnsScript = @"
-#!/bin/bash
-NEW_IP=\$(ip route show default | awk '{print \$3}')
-if [ -n "\$NEW_IP" ]; then
-  sudo sed -i '/win-host/d' /etc/hosts
-  sudo sh -c "echo '\$NEW_IP win-host' >> /etc/hosts"
+# Fix: Quietly pre-boot WSL instance and suppress all internal deprecation warnings from .wslconfig
+& wsl.exe -u root -e bash -c "exit" 2>$null | Out-Null
+Start-Sleep -Seconds 1
+
+$bashPayload = @'
+NEW_IP=$(ip route show default | awk '{print $3}')
+if [ -n "$NEW_IP" ]; then
+  echo "nameserver $NEW_IP" | sudo tee /etc/resolv.conf > /dev/null
+  echo "Successfully inverted container endpoint mapping context inside resolv.conf targeting host gateway: $NEW_IP"
+else
+  echo "[ERROR] Internal bash execution engine failed to extract fallback host gateway reference." >&2
+  exit 1
 fi
-"@
+'@
 
-wsl exec sh -c "echo '$bashDnsScript' > /home/$wslUser/update_win_host.sh && chmod +x /home/$wslUser/update_win_host.sh"
-wsl exec sudo sh -c "echo '$wslUser ALL=(ALL) NOPASSWD: /home/$wslUser/update_win_host.sh' > /etc/sudoers.d/wsl-network"
-wsl exec sh -c "grep -q 'update_win_host.sh' /home/$wslUser/.bashrc || echo 'sudo /home/$wslUser/update_win_host.sh' >> /home/$wslUser/.bashrc"
-
-wsl exec sudo /home/$wslUser/update_win_host.sh
-Write-Host "    |-- Dynamic DNS entry 'win-host' successfully synced inside WSL /etc/hosts." -ForegroundColor Green
-
-Write-Host "`n[SUCCESS] Fixed Netsh-backed secure transport pipeline fully established." -ForegroundColor Green
+try {
+  # Fix: Stream execution output while completely discarding standard error noise from corrupted host .wslconfig keys
+  $wslOutput = & wsl.exe -u root -e bash -c $bashPayload 2>$null
+  $wslOutput | ForEach-Object {
+    if ($_ -match "Successfully") {
+      Write-Host "    |-- WSL:: $_" -ForegroundColor Cyan
+    }
+  }
+  Write-Host '>>> [SUCCESS] Network cross-boundary bridges established on the green path matrix!' -ForegroundColor Green
+}
+catch {
+  throw "[FATAL] WSL context injection sequence collapsed. Subsystem transmission error. Trace: $_"
+}

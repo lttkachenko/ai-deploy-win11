@@ -3,7 +3,7 @@
 ## 📌 Context & Execution Rules
 This document establishes absolute code style constraints and formatting layouts mapped directly from active configuration dotfiles (`.editorconfig`, `.prettierrc`, `.prettierignore`, `.stylelintrc`). 
 All AI-driven file modifications, test generations, and boilerplate scaffolding executed by Aider inside the workspace MUST adhere strictly to these defined properties to avoid CI/CD pipeline regression blocks.
-
+All comments in code MUST be in English only to ensure international teams usability.
 ---
 
 ## 🛠 1. CORE FILES & INTERFACES LAYOUT (.editorconfig)
@@ -26,7 +26,7 @@ trim_trailing_whitespace = true
 - **Tabs vs Spaces:** Hard tabs are banned. Always utilize exactly 2 soft spaces per indent level.
 - **Line Endings:** Unix-style LF line breaks only. No CRLF mutations allowed.
 - **File Endings:** Every script block must terminate with a final trailing newline sequence. No exceptions.
-
+- **English Only:** All the identifiers, names and comments must be in English only for the reason stated above.
 ---
 
 ## 📦 2. ANY CODE FILES AST FORMATTING (.prettierrc)

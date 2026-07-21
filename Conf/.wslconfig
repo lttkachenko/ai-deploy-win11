@@ -5,8 +5,9 @@ memory=16GB
 # CPU Core ceiling configuration to preserve host stability under full-load indexing
 processors=8
 
-# Force-disable aggressive host page release iterations to bypass memory thrashing lags
-pageReporting=false
-
 # Auto-route local network traffic bindings seamlessly across host and guest boundaries
 localhostForwarding=true
+
+[experimental]
+# Force-disable aggressive host page release iterations to bypass memory thrashing lags
+pageReporting=false
