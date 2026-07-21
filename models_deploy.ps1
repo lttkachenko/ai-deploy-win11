@@ -12,6 +12,7 @@ $homeDir = [System.Environment]::GetFolderPath('UserProfile')
 $aiRoot = Join-Path $homeDir '.ai'
 $configPath = Join-Path $aiRoot 'conf\llama-swap.conf.yml'
 
+# Fail-safe protection layer: resolve absolute path to core download utility
 $universalDownloader = Join-Path $PSScriptRoot 'Utils\asset_downloader.ps1'
 if (-not (Test-Path $universalDownloader)) {
   $universalDownloader = Join-Path (Split-Path $PSScriptRoot -Parent) 'Utils\asset_downloader.ps1'
@@ -23,7 +24,7 @@ if (-not (Test-Path $universalDownloader) -or $universalDownloader -eq $PSComman
 $configLines = Get-Content -Path $configPath
 $modelsBaseStorage = Join-Path $aiRoot 'models'
 
-# Macros mapping (DOS-8 / DOS-9 SSOT)
+# Centralized environment macro registry map (DOS-8 / DOS-9 SSOT)
 $macroMap = @{
   'global_repo' = 'https://huggingface.co'
   'resolve'     = 'resolve/main'
@@ -44,17 +45,19 @@ foreach ($rawLine in $configLines) {
   if ($inModelsBlock -and $line -match '^[a-zA-Z]') { $inModelsBlock = $false }
   if (-not $inModelsBlock) { continue }
 
+  # Parse specific target routing hardware context identifier profiles
   if ($line -match '^\s{2}([a-zA-Z0-9_\-]+):') {
     $currentModel = $Matches[1].Trim()
     $modelsData[$currentModel] = @{ "model_source" = $null; "model_url" = $null; "mmproj_url" = $null }
     continue
   }
 
+  # Ingest profile parameters with rigorous validation boundaries
   if ($currentModel) {
     $val = if ($trimmed -match ':\s*(\S+)') { $Matches[1].Trim().Replace("'", "").Replace('"', "") } else { $null }
     if (-not $val) { continue }
 
-    # Фикс (DOS-8): Macros ${macro} parse using format directly
+    # Recursive compilation layer: resolve variable macro definitions dynamically
     foreach ($macro in $macroMap.Keys) {
       $val = $val.Replace('$' + "{$macro}", $macroMap[$macro])
     }
@@ -65,6 +68,7 @@ foreach ($rawLine in $configLines) {
   }
 }
 
+# Wrapper helper executing standardized json payload handshake contracts
 function Ingest-WeightAsset {
   param ($DirectUrl, $TargetDir)
   if ([string]::IsNullOrEmpty($DirectUrl)) { return }
@@ -85,10 +89,15 @@ foreach ($modelName in $modelsData.Keys) {
 
   if ([string]::IsNullOrEmpty($mSource) -or [string]::IsNullOrEmpty($mUrl)) { continue }
 
-  $cleanPath = $mSource.Replace('https://huggingface.co', '').TrimStart('/')
-  $urlParts = $cleanPath.Split('@')[0].Split('/')
-  $authorDir = $urlParts[0]
-  $repoDir   = $urlParts[1]
+  # Deterministic regex mapping (DOS-8): isolate author and repository paths safely
+  if ($mSource -match 'huggingface\.co/([^/]+)/([^@/]+)') {
+    $authorDir = $Matches[1]
+    $repoDir   = $Matches[2]
+  } else {
+    throw "[FATAL] Failed to parse HuggingFace repository layout coordinates from source: $mSource"
+  }
+
+  # Lock down dynamic destination to persistent user profile repository boundaries
   $specificTargetDir = Join-Path $modelsBaseStorage "${authorDir}\${repoDir}"
 
   Write-Host "`n [NODE] Target Profile Routing: $modelName" -ForegroundColor Cyan
@@ -96,6 +105,7 @@ foreach ($modelName in $modelsData.Keys) {
   if ($pUrl) { Write-Host "   |-- Downloading projector: $pUrl" -ForegroundColor Gray }
   Write-Host "   |-- Destination path: $specificTargetDir" -ForegroundColor Green
 
+  # Trigger high-performance stream delivery routines sequentially
   Ingest-WeightAsset -DirectUrl $mUrl -TargetDir $specificTargetDir
   if ($pUrl) { Ingest-WeightAsset -DirectUrl $pUrl -TargetDir $specificTargetDir }
 }
