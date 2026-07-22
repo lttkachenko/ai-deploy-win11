@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com).
 
+## [Development Snapshot] - DOS-9 (2026-07-21)
+
+### Added
+- (DOS-9) - Established a pristine, decoupled host directory architecture under `~/.ai/`, completely isolating the core Python `.venv/` and its automation payload (`.venv/mcp/`) from containerized storage zones.
+- (DOS-9) - Introduced automated, multi-layered parameter extraction inside `qdrant_deploy.ps1` to natively parse API keys, task names, and local storage coordinates directly from the unified `~/.ai/conf/mcp.conf.yml` manifest.
+- (DOS-9) - Integrated a high-performance, idempotent caching layer in `Utils\asset_downloader.ps1` that completely bypasses heavy payload streaming routines with an instant exit warning (`Model asset already in place!`) if valid target GGUF layers are identified on disk.
+- (DOS-9) - Enforced a strict LM Studio temporary transaction file allocation pattern (`download-<FILE_NAME>`) to protect the raw NVMe network stream array from target destination filesystem corruption upon sudden connection drops or socket timeouts.
+
+### Modified
+- (DOS-9) - Refactored `models_deploy.ps1` to migrate from complex string fragmentation methodologies (`.Split()`) to a centralized, declarative **Direct String Mapping** topology utilizing rigid YAML `model_url` and `mmproj_url` keys.
+- (DOS-9) - Deprecated the memory-heavy, host-intrusive local bind mount structure (`type: bind`) for containerized vector engines, offloading all storage layouts exclusively to decoupled, native Docker Named Volumes (`volumes: qdrant_storage`).
+- (DOS-9) - Shifted the `qdrant-mcp-service` Windows background daemon execution context from explicit user accounts to the unprivileged `LocalSystem` engine, completely eliminating the need for dynamic `ObjectName` binding and active Win32 `SeServiceLogonRight` security policy modifications.
+- (DOS-9) - Segmented the persistent FastMCP logging telemetry rooms by forcing NSSM to route the host daemon execution lifecycle into distinct, isolated tracking streams (`<srv_name>.stdout.log` and `<srv_name>.stderr.log`).
+
+### Fixed
+- (DOS-9) - Eliminated a catastrophic directory shifting bug inside `pyparts_deploy.ps1` by forcing rigorous .NET path normalization (`[System.IO.Path]::GetFullPath`) to prevent relative syntax dots (`.\`) from leaking the active venv environment outside user profile bounds.
+- (DOS-9) - Resolved a severe pipeline drop inside `network_setup.ps1` on Windows 11 environments by introducing a pre-flight WSL instance cold boot command (`wsl.exe -e true`) to forcefully bring up host vEthernet adapters before interface query operations take place.
+- (DOS-9) - Purged an index displacement error in `models_deploy.ps1` caused by unstripped leading slashes on truncated URL strings, restoring symbol-for-symbol layout mapping functionality across case-immutable Hugging Face repositories.
+- (DOS-9) - Cleared an implicit, recursive self-invocation infinite loop freeze in `models_deploy.ps1` caused by modular path resolution collisions mapping the universal downloader handle directly onto the calling script coordinate.
+- (DOS-9) - Corrected an invalid command argument trap inside `qdrant_deploy.ps1` by aligning fallback retry variables with native, official NSSM service execution definitions (`AppThrottle` instead of `Throttle`).
+- (DOS-9) - Eradicated a critical 401 Unauthorized cluster handshake collision by injecting mandatory `api-key` validation token header specs straight into the active PowerShell web request routine loops targeting `localhost:6333/readyz`.
+- (DOS-9) - Mitigated a crippling local ISP routing filter crash by implementing absolute DNS cache flushing (`ipconfig /flushdns`) and a network cooldown period inside the raw GGUF streaming block prior to hitting remote CDN targets.
+
+### Known Issues
+- **Micro-Scalar YAML Block Conflicts**: Initializing unquoted literal variable definitions that utilize curly braces (`{...}`) directly inside the value block scope triggers immediate YAML mapping failures. The parser interprets the string as a nested JSON inline object declaration, requiring absolute string wrap enforcement via explicit double quotes (`"..."`) or conversion to standard Go/Llama-Swap macro definitions (`${...}`).
+- **Address Space Network Socket Collisions**: Utilizing hyper-standard runtime connection sockets (such as binding `llama-server` to port `8080` or FastMCP to port `8000`) triggers address collision crashes (`Address already in use`) on dense developer setups with concurrent Webpack or FastAPI processes. All environment network configurations must be audited and relocated to isolated, non-standard high-range port spaces (e.g., `18080`, `18000`) before final pre-release optimization runs.
+
+---
+
 ## [Development Snapshot] - DOS-8 (2026-07-20)
 
 ### Added
@@ -27,6 +56,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - **Node.js/Go Interactive TTY Hijacking**: CLI binaries that construct pseudo-graphic terminal dropdowns or raw keypress confirmation prompt blocks (like `lms get`) completely isolate standard input (`StandardInput.WriteLine`). They ignore automated text pipes (`echo y |`) and headless flags, requiring complete execution bypass or strict programmatic non-interactive mode isolation via native web transfer streams (`Invoke-WebRequest`).
 - **Pydantic/FastMCP Dependency Hell**: The Anthropic `mcp` core transport package forces strict runtime constraints requiring `pydantic>=2.11.0`. Hardcoding older version definitions (`pydantic==2.7.1`) inside development manifests creates severe silent event loop collisions, requiring global baseline enforcement across all orchestrator rigs.
 
+---
+
 ## [Development Snapshot] - DOS-7 (2026-07-19)
 
 ### Added
@@ -50,6 +81,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-7) - Fixed I/O blocking blocks inside `libs.py` by wrapping standard synchronous `open()` and recursive transclusion file reads inside an isolated `asyncio.to_thread()` pipeline.
 - (DOS-7) - Corrected Sonar / Linter security hotspot flags inside `qdrant_deploy.ps1` by expanding the truncated health check address to a valid production `http://127.0.0` URI.
 
+---
+
 ## [Development Snapshot] - DOS-6 (2026-07-17)
 
 ### Added
@@ -69,6 +102,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-6) - Mitigated major memory leaks inside WSL2 by forcing `QDRANT__VECTORS__MEMMAP_THRESHOLD=0` in `docker-compose.yml`, shifting vector storage execution boundaries out of RAM down to raw NVMe disk mapping.
 - (DOS-6) - Resolved a silent async execution failure inside `libs.py` by applying proper `await` keywords to Qdrant client storage mutations (`delete`, `upsert`), correcting core memory-mapped collection pipeline drops.
 
+---
+
 ## [Development Snapshot] - 2026-07-08
 
 ### Added
@@ -79,6 +114,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 ### Fixed
 - (DOS-2) - Resolved a critical HTTP 404 crash inside `qdrant_watcher.py` by mapping the target Ollama payload explicitly to the updated `/api/embed` endpoint.
 - (DOS-2) - Fixed vector parsing exceptions by re-engineering the response interpreter to extract structured arrays from the modern `embeddings` JSON key.
+
+---
 
 ## [Development Snapshot] - 2026-07-07
 

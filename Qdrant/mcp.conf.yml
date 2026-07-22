@@ -1,0 +1,14 @@
+# -----------------------------------------------------------------
+# Declarative FastMCP Network SSE Server Configuration
+# -----------------------------------------------------------------
+servers:
+  qdrant-srv:
+    name: ai-rag-srv
+    url: "http://win-host:8000/sse"
+    api_key: dev-srv-key-default
+
+watchers:
+  qdrant-wtr:
+    name: ai-rag-wtr
+    vault: 'D:\Obsidian\Vaults\v-dev'
+    api_key: dev-wtr-key-default

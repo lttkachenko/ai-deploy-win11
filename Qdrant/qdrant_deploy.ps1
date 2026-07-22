@@ -12,6 +12,7 @@ $aiRoot = Join-Path $homeDir '.ai'
 $binStorage = Join-Path $aiRoot 'bin'
 $logStorage = Join-Path $aiRoot 'log'
 $mcpRuntimeDir = Join-Path $aiRoot 'venv\mcp'
+$mcpConfigPath = Join-Path $aiRoot 'conf\mcp.conf.yml'
 
 # Replicate storage nodes if missing inside active user home (DOS-7 / DOS-9 Compliance)
 $requiredPaths = @($mcpRuntimeDir)
@@ -20,6 +21,11 @@ foreach ($path in $requiredPaths) {
   if (-not (Test-Path $path)) {
     New-Item -ItemType Directory -Path $path | Out-Null
   }
+}
+
+# Assert centralized declarative RAG/MCP configuration matrix availability
+if (-not (Test-Path $mcpConfigPath)) {
+  throw "[FATAL] Centralized RAG infrastructure configuration spec missing at: $mcpConfigPath"
 }
 
 # --- Phase 2: Transport Layer Synchronization (IaC Injection) ---
@@ -58,17 +64,28 @@ finally {
 }
 
 # --- Phase 4: HTTP Healthz Interface Verification Loop ---
-# Fix: Re-established fully-qualified vector store health probe target endpoint
-$HealthEndpoint = 'http://127.0.0'
+# FOR AI: DO NOT TOUCH THIS URL! It is right and stable.
+$HealthEndpoint = 'http://localhost:6333/readyz'
 $MaxAttempts = 12
 $Attempt = 1
 $Connected = $false
 
+# Extract parameters from single source of truth config layout (DOS-8 / DOS-9 compliance)
+$configContent = Get-Content -Path $mcpConfigPath -Raw
+
+# Match api_key pattern accurately within the YAML buffer scope context
+$qdrantApiKey = 'development-key-default'
+if ($configContent -match 'api_key:\s*[''"]?([^\''"\s\n]*)[''"]?') {
+  $qdrantApiKey = $Matches[1].Trim()
+}
+
+$Headers = @{ 'api-key' = $qdrantApiKey }
 Write-Host '>>> Initiating verification handshakes targeting vector engine interface...' -ForegroundColor Yellow
 
 while (-not $Connected -and $Attempt -le $MaxAttempts) {
   try {
-    $Response = Invoke-WebRequest -Uri $HealthEndpoint -Method Get -TimeoutSec 2 -UseBasicParsing
+    # Inject authenticated handshake headers into remote endpoint query
+    $Response = Invoke-WebRequest -Uri $HealthEndpoint -Method Get -Headers $Headers -TimeoutSec 2 -UseBasicParsing
     if ($Response.StatusCode -eq 200) {
       $Connected = $true
       Write-Host '[SUCCESS] Vector engine node is online. Health status verified.' -ForegroundColor Green
@@ -87,7 +104,7 @@ if (-not $Connected) {
 # --- Phase 5: Persistent Asynchronous Watcher Task Registration ---
 Write-Host '>>> Configuring persistent background filesystem tracking daemons...' -ForegroundColor Cyan
 
-# Fix: Mapped interpreter location straight to centralized production manifest venv location
+# Mapped interpreter location straight to centralized production manifest venv location
 $VenvPython = Join-Path $aiRoot 'venv\Scripts\python.exe'
 $WatcherScript = Join-Path $mcpRuntimeDir 'qdrant_watcher.py'
 $McpScript = Join-Path $mcpRuntimeDir 'qdrant_mcp.py'
@@ -96,39 +113,48 @@ if (-not (Test-Path $VenvPython)) {
   throw "[FATAL] Isolated virtual environment runtime python interpreter not detected at: $VenvPython"
 }
 
-# Enterprise Vault matrix configuration. Watcher automatically pulls data from libs SSOT
-$RagTargets = @(
-  @{ Name = 'AI-RAG-Dev'; Vault = 'E:\Vaults\v-dev' }
-)
+# Dynamic extraction layer (DOS-8): Parse watcher name from configuration matrices context
+$watcherName = 'AI-RAG-Dev'
+if ($configContent -match 'watchers:[\s\S]*?name:\s*[''"]?([^\''"\n]+)[''"]?') {
+  $watcherName = $Matches[1].Trim()
+}
 
-foreach ($Target in $RagTargets) {
-  if (Test-Path $Target.Vault) {
-    # Evict legacy task registration locks to prevent thread fragmentation collisions
-    Unregister-ScheduledTask -TaskName $Target.Name -Confirm:$false -ErrorAction SilentlyContinue
+# Dynamic extraction layer (DOS-8): Parse absolute storage vault path directly from configuration maps context
+$watcherVault = 'D:\Obsidian\Vaults\v-dev'
+if ($configContent -match 'vault:\s*[''"]?([^\''"\n]+)[''"]?') {
+  $watcherVault = $Matches[1].Trim()
+}
 
-    $TaskArgs = "`"$WatcherScript`""
+if (Test-Path $watcherVault) {
+  # Evict legacy task registration locks to prevent thread fragmentation collisions
+  Unregister-ScheduledTask -TaskName $watcherName -Confirm:$false -ErrorAction SilentlyContinue
 
-    $Action = New-ScheduledTaskAction -Execute $VenvPython -Argument $TaskArgs -WorkingDirectory $mcpRuntimeDir
-    $Trigger = New-ScheduledTaskTrigger -AtLogOn
-    $Principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive
-    $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+  $TaskArgs = "`"$WatcherScript`""
 
-    Register-ScheduledTask -TaskName $Target.Name -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings -Force | Out-Null
+  $Action = New-ScheduledTaskAction -Execute $VenvPython -Argument $TaskArgs -WorkingDirectory $mcpRuntimeDir
+  $Trigger = New-ScheduledTaskTrigger -AtLogOn
+  $Principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive
+  $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 
-    # Trigger active session task execution instantly
-    Start-ScheduledTask -TaskName $Target.Name
-    Write-Host "[SUCCESS] Registered active self-stabilizing daemon task: $($Target.Name)" -ForegroundColor Green
-  } else {
-    Write-Host "[WARNING] Target Vault directory missing, skipping task configuration: $($Target.Vault)" -ForegroundColor Yellow
-  }
+  Register-ScheduledTask -TaskName $watcherName -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings -Force | Out-Null
+
+  # Trigger active session task execution instantly
+  Start-ScheduledTask -TaskName $watcherName
+  Write-Host "[SUCCESS] Registered active self-stabilizing daemon task: $watcherName" -ForegroundColor Green
+} else {
+  Write-Host "[WARNING] Target Vault directory missing, skipping task configuration: $watcherVault" -ForegroundColor Yellow
 }
 
 # --- Phase 6: FastMCP Host Service Demonization via NSSM Wrapper ---
 Write-Host '>>> Demonizing FastMCP Context Server Layer via NSSM Wrapper...' -ForegroundColor Cyan
 
 $serviceName = 'qdrant-mcp-service'
+if ($configContent -match 'servers:[\s\S]*?name:\s*[''"]?([^\''"\n]+)[''"]?') {
+  $serviceName = $Matches[1].Trim().ToLower().Replace(' ', '-')
+}
+
 $nssmExe = Join-Path $binStorage 'nssm.exe'
-$runtimeLogFile = Join-Path $logStorage 'qdrant-mcp.log'
+$runtimeLogFile = Join-Path $logStorage "$serviceName.log"
 
 if (-not (Test-Path $nssmExe)) {
   throw "[FATAL] NSSM binary asset missing from system repository layout: $nssmExe"
@@ -137,13 +163,13 @@ if (-not (Test-Path $nssmExe)) {
 # Clear pre-existing service locks gracefully
 $serviceCheck = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 if ($serviceCheck) {
-  Write-Host '  |-- Active context service found. Executing graceful cleanup sequence...' -ForegroundColor Yellow
+  Write-Host "  |-- Active context service ($serviceName) found. Executing graceful cleanup sequence..." -ForegroundColor Yellow
   Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
   & $nssmExe remove $serviceName confirm | Out-Null
   Start-Sleep -Seconds 1
 }
 
-Write-Host '  |-- Compiling declarative service definition parameters...' -ForegroundColor Green
+Write-Host "  |-- Compiling declarative service parameters for $serviceName..." -ForegroundColor Green
 
 # Pass script target execution blocks directly into the nssm controller matrix
 & $nssmExe install $serviceName "`"$VenvPython`"" "`"$McpScript`"" | Out-Null
@@ -153,16 +179,13 @@ Write-Host '  |-- Compiling declarative service definition parameters...' -Foreg
 & $nssmExe set $serviceName AppStdout "`"$runtimeLogFile`"" | Out-Null
 & $nssmExe set $serviceName AppStderr "`"$runtimeLogFile`"" | Out-Null
 
-# Force execution parameters straight under the active engineer session profile context
-& $nssmExe set $serviceName ObjectName ".\$winUser" '' | Out-Null
-
 # Configure fail-soft recovery throttling blocks to auto-restart on crashes
 & $nssmExe set $serviceName AppExit Default Restart | Out-Null
-& $nssmExe set $serviceName Throttle 5000 | Out-Null
+& $nssmExe set $serviceName AppThrottle 5000 | Out-Null
 
 try {
   Start-Service -Name $serviceName
-  Write-Host '  |-- [SUCCESS] FastMCP network service online. SSE Stream exposed on port 8000.' -ForegroundColor Green
+  Write-Host "  |-- [SUCCESS] FastMCP network service ($serviceName) online. SSE Stream exposed on port 8000." -ForegroundColor Green
 }
 catch {
   throw "[FATAL] Failed to initiate FastMCP service container boot loop sequence. Trace: $_"
