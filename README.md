@@ -17,22 +17,26 @@ These components must be installed manually prior to running the deployment suit
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
     ```
 2.  **Local Inference Engine:**
-*   **Ollama for Windows** (listening on default host loopback port `11434`) OR **LM Studio/Llama.cpp Server** toolchain installed.
-*   If utilizing LM Studio, ensure the headless `llmster` background daemon and `lms` CLI toolchain are accessible.
+*   **LM Studio/Llama.cpp Server** toolchain is installed.
+*   **Headless `llmster` background daemon and `lms`** CLI toolchain are accessible. Please ensure before start!
 3.  **Container Sandbox:**
-*   **Docker Desktop for Windows** installed and running.
-*   WSL2 integration enabled (`Settings -> Resources -> WSL integration`).
+*   **Platform Virtualization Stack** is enabled in your BIOS Setup. 
+*   **Docker Desktop for Windows** is installed and running.
+*   **WSL2 integration** enabled (`Settings -> Resources -> WSL integration`).
 4.  **Guest Subsystem:**
 *   **WSL2** instance configured with a modern Linux distribution (Ubuntu 22.04 LTS or 24.04 LTS recommended).
-*   Ensure `systemd` is enabled inside the guest (`/etc/wsl.conf` containing `[boot]\nsystemd=true`).
+*   **`systemd`** is enabled inside the guest system (`/etc/wsl.conf` containing `[boot]\nsystemd=true`). Please ensure before start!
+5.  **Documents Storage Engine:**
+*   **Obsidian for Windows** is installed and running. Make sure it is accessible and is listening to its standard port.
+*   **`v-dev`** and **v-hobby** document vaults are created, and their paths are present in `watcher` section in `mcp.conf.yml`. Please ensure before start!
 
 ---
 
 ### External IDE Integration
-The local infrastructure is explicitly optimized for JetBrains PhpStorm / WebStorm.
-To inject local LLMs into your IDE via `Continue` or `Claude` plugins:
-1. Direct your IDE plugin API base URL endpoint to: `http://127.0.0.1:8000`
-2. Utilize the master authentication token: `sk-sithedition-2026`
+The local infrastructure is optimized primarily for JetBrains PhpStorm / WebStorm but should work with any other IDE as well.
+To inject local LLMs into your IDE via `Continue`, `CLine`, `RooCode` or `Claude` plugins:
+1. Direct your IDE plugin API base URL endpoint to: `http://127.0.0.1:8091`
+2. Use the master authentication token: `sk-sithedition-2026`
 3. Map the target model alias token to mimic `claude-sonnet-4-6` or `claude-opus-4-8`.
    The LiteLLM proxy automatically translates and hot-swaps payloads to the high-throughput local Qwen MoE Coder models.
 
@@ -65,10 +69,18 @@ Deploys a persistent Qdrant Vector Engine container node. To preserve memory saf
 
 Mounts and fires the `aider_deploy.sh` script inside the WSL2 guest shell environment. It resolves path tokens, installs core packages using `pipx`, and flattens and copies configuration assets from the active host environment into `~/.aider/`.
 
+### `.\Utils\asset_downloader.ps1`
+
+Downloads, reloads, and puts all the heavy asset files (including LLM weights) into their places. Unpacks them if needed using the next utility.
+
+### `.\Utils\asset_extractor.ps1`
+
+Extracts downloaded assets if needed by `asset_downloader` util.
+
 ## RAG & Vector Space Topology
 
 The Real-Time Knowledge Indexing Pipeline operates with strict data isolation on a fully non-blocking asynchronous architecture (`asyncio` + `AsyncQdrantClient`). It prevents context leakage between enterprise engineering architectures and personal hobby workflows by using two distinct Obsidian vaults and two isolated Qdrant vector collections.
-To secure your host's strict 6GB VRAM allocation threshold, both pipelines bypass external inference dependencies (purging Ollama/LiteLLM HTTP blocks) and leverage the unified `get_embedding` factory engine inside `libs.py` executing **strictly on the host CPU boundary** utilizing the lightweight `nomic-embed-text-v1.5` model (dimension `768`) over `MarkdownHeaderTextSplitter` structures. All file parsing, Markdown splitting, and tensor extractions are entirely offloaded from the main event loop thread via `asyncio.to_thread()` allocations to guarantee fail-soft execution boundaries.
+To secure your host's strict 6GB VRAM allocation threshold, both pipelines bypass external inference dependencies (purging Ollama/LiteLLM HTTP blocks) and leverage the unified `get_embedding` factory engine inside `libs.py` executing **strictly on the host CPU boundary** using the lightweight `nomic-embed-text-v1.5` model (dimension `768`) over `MarkdownHeaderTextSplitter` structures. All file parsing, Markdown splitting, and tensor extractions are entirely offloaded from the main event loop thread via `asyncio.to_thread()` allocations to guarantee fail-soft execution boundaries.
 The pipeline complies with native Nomic specifications by forcing `search_document: ` prefixes for filesystem ingestion loops and `search_query: ` prefixes for FastMCP query tools.
 
 ### Development & Engineering Stream (db-dev)
