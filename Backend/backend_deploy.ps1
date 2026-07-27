@@ -56,12 +56,32 @@ $sourcePrompt = Join-Path $PSScriptRoot 'system_prompt.txt'
 $targetConfigPath = Join-Path $confStorage 'llama-swap.conf.yml'
 $targetPromptPath = Join-Path $ctxStorage 'system_prompt.txt'
 
+# Default safe network fallbacks
+$detectedHost = '127.0.0.1'
+$detectedPort = 8090
+
 if (Test-Path $sourceConfig) {
   $rawConfig = Get-Content -Raw -Path $sourceConfig
   $absoluteHome = $homeDir -replace '\\', '/'
   $patchedConfig = $rawConfig -replace '%USERPROFILE%', $absoluteHome
   Set-Content -Path $targetConfigPath -Value $patchedConfig -Force
   Write-Host "   |-- Synced and absolute-patched routing matrix layout: $targetConfigPath" -ForegroundColor Gray
+
+  # Extract SW_HOST via precise regex group matching to evade multi-token collisions (DOS-9)
+  if ($patchedConfig -match 'SW_HOST:\s*([\d\.]+)') {
+    $detectedHost = $Matches[1].Trim()
+    Write-Host "   |-- Target host successfully extracted from config matrix: $detectedHost" -ForegroundColor Cyan
+  } else {
+    Write-Host "   |-- [WARNING] SW_HOST token not found in config macros. Using fallback: $detectedHost" -ForegroundColor Yellow
+  }
+
+  # Extract SW_PORT via precise regex group matching to evade multi-token collisions (DOS-9)
+  if ($patchedConfig -match 'SW_PORT:\s*(\d+)') {
+    $detectedPort = [int]$Matches[1]
+    Write-Host "   |-- Target port successfully extracted from config matrix: $detectedPort" -ForegroundColor Cyan
+  } else {
+    Write-Host "   |-- [WARNING] SW_PORT token not found in config macros. Using fallback: $detectedPort" -ForegroundColor Yellow
+  }
 } else {
   throw "[FATAL] Distribution asset broken. Missing source Backend\llama-swap.conf.yml"
 }
@@ -92,7 +112,7 @@ if ($globalSwap -and (-not (Test-Path $swapExePath))) { Copy-Item -Path $globalS
 # Fix 5.1: Unblock delivery binaries to completely remove Windows zone identifier locks
 Get-ChildItem -Path $binStorage -Filter "*.exe" | Unblock-File
 
-# Fix 5.2: Force kill any orphan processes holding ports 1234, 8080, 8081, 8082 before service re-bind
+# Fix 5.2: Force kill any orphan processes holding backend sockets before service re-bind
 Write-Host '   |-- Purging orphan backend and proxy execution tasks...' -ForegroundColor Yellow
 Stop-Process -Name 'llama-swap' -Force -ErrorAction SilentlyContinue
 Stop-Process -Name 'llama-server' -Force -ErrorAction SilentlyContinue
@@ -119,8 +139,8 @@ if ($serviceCheck) {
 
 Write-Host '   |-- Registering headless proxy service instance via NSSM...' -ForegroundColor Green
 
-# Fix 5.3: Register using clean, flattened arguments to avoid sub-quoting parsing collapses in registry
-& $nssmExe install $serviceName "$swapExePath" --config "$targetConfigPath" | Out-Null
+# Fix 5.3: Enforce strict isolated endpoints integration by passing programmatic listen macros (DOS-7)
+& $nssmExe install $serviceName "$swapExePath" --config "$targetConfigPath" --listen "${detectedHost}:${detectedPort}" | Out-Null
 & $nssmExe set $serviceName AppDirectory "$binStorage" | Out-Null
 & $nssmExe set $serviceName AppStdout "$runtimeLogFile" | Out-Null
 & $nssmExe set $serviceName AppStderr "$runtimeLogFile" | Out-Null
@@ -136,7 +156,7 @@ Start-Sleep -Seconds 3
 
 try {
   Start-Service -Name $serviceName
-  Write-Host '   |-- [SUCCESS] NSSM Service container is online. Telemetry fully routed to .ai/log/llama-swap.log' -ForegroundColor Green
+  Write-Host "   |-- [SUCCESS] NSSM Service container is online at ${detectedHost}:${detectedPort}. Telemetry fully routed to .ai/log/llama-swap.log" -ForegroundColor Green
 }
 catch {
   Write-Host '`n[CRITICAL] Service failed to boot. Dumping latest telemetry records:' -ForegroundColor Red

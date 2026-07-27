@@ -4,7 +4,8 @@
 servers:
   qdrant-srv:
     name: ai-rag-srv
-    url: "http://win-host:8000/sse"
+    host: "http://win-host:8095/sse"
+    port: 8095
     api_key: dev-srv-key-default
 
 watchers:

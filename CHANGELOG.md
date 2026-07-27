@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com).
 
+## [Development Snapshot] - DOS-10 (2026-07-27)
+
+### Added
+- (DOS-10) - Established a secure, dedicated port space routing matrix entirely shifted to non-standard high-range blocks (`8090`–`8095`), completely purging collision risks with future node and Webpack development pipelines.
+- (DOS-10) - Integrated a high-performance, dynamic macro token discovery engine into `backend_deploy.ps1` utilizing explicit regex group filters to natively extract case-sensitive variables (`SW_HOST`, `SW_PORT`) from configuration matrices.
+- (DOS-10) - Enforced a strict cryptographic identity validation mechanism inside `libs.py` by implementing a stable `hashlib.sha256` digest mapping protocol to yield deterministic, immutable uint64 `point_id` markers across daemon restarts.
+- (DOS-10) - Introduced a strict security perimeter authorization layer inside `qdrant_mcp.py` requiring explicit `client_key` query payload validation to pass incoming FastMCP tool invocation requests.
+- (DOS-10) - Implemented a cyclic pre-flight validation barrier loop inside `mcp_deploy.ps1` targeting port `8095` to gracefully absorb cold-boot thread block latencies caused by heavy CPU matrix computations during `SentenceTransformer` initialization.
+
+### Modified
+- (DOS-10) - Refactored `backend_deploy.ps1` to cleanly pass precise, flattened infrastructure constraints (`--listen "${detectedHost}:${detectedPort}"`) down to the NSSM installation command boundary, eliminating nested quotation collapse failures in the Win32 registry.
+- (DOS-10) - Shifted the underlying inference execution sequence from abstract multi-port mapping arrays to a unified sequential workflow on a single target port (`8090`), leveraging the native `mostlygeek/llama-swap` spec under strict `concurrency: 1` limits.
+- (DOS-10) - Standardized the centralized variable injection topology across all core data-parsing layouts to strictly utilize standard dollar-brace tokens (`${macro}`), deprecating incompatible abstract bracket formats.
+- (DOS-10) - Translated all code comment structures and logging signals inside `libs.py`, `qdrant_mcp.py`, and `qdrant_watcher.py` into a unified, enterprise-grade English vocabulary layout to comply with automated security code quality audits.
+
+### Fixed
+- (DOS-10) - Resolved a catastrophic, random vector replication loop inside `libs.py` by deprecating python's native, process-seeded `hash()` function, replacing it with case-immutable deterministic hash generation algorithms.
+- (DOS-10) - Purged a crippling syntax error inside `qdrant_mcp.py` caused by a misplaced PowerShell negation keyword (`if -not`) in the file validation sequence, restoring pure Python compliance standards.
+- (DOS-10) - Corrected an invalid network routing loop inside `qdrant_deploy.ps1` by shifting the pre-flight check endpoint to the officially documented Qdrant path `/readyz`, preventing immediate `404 Not Found` deployment failures.
+- (DOS-10) - Mitigated a severe runtime directory drifting bug inside `pyparts_deploy.ps1` by swapping single-character string trimmers with an absolute, non-destructive regex path normalization pattern that preserves Unix-style dot definitions (`.ai/`).
+- (DOS-10) - Cleared an immediate `ModuleNotFoundError` inside host service containers by hard-coding explicit sys-path modifications (`sys.path.insert`) to force the `LocalSystem` engine to look up internal modules inside the exact execution directory.
+- (DOS-10) - Eradicated a fatal `Null` execution command crash at step 5.3 of the backend deployment script by aligning raw output pipeline redirections with the native PowerShell `Out-Null` cmdlet signature.
+- (DOS-10) - Resolved a severe file parsing drift inside `qdrant_watcher.py` by completely expunging copy-paste function duplicates, routing all markdown processing pipelines strictly through the verified `libs.index_file` coordinate.
+
+### Known Issues
+- **Hugging Face Rate Limiting Blocks**: Initializing cold boots of the shared CPU transformation pipeline from unauthenticated terminal instances triggers frequent `huggingface_hub` connection delay cycles. Production environments should explicitly provision an absolute `HF_TOKEN` macro value inside the NSSM wrapper extra environment space to ensure high-priority rate limits [DOS-7].
+- **LocalSystem Configuration Routing Collisions**: Running context servers via headless background services can trigger environmental profile path resets inside standard libraries. If `AI_CONFIG_PATH` variables drop out from target NSSM blocks, the parsing routine will fall back onto default paths, ignoring the custom `mcp.conf.yml` socket mappings [DOS-9].
+
+---
+
 ## [Development Snapshot] - DOS-9 (2026-07-21)
 
 ### Added

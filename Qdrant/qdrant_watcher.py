@@ -1,99 +1,90 @@
 import os
 import re
+import sys
 import asyncio
 from watchfiles import awatch
 from qdrant_client.models import Distance, VectorParams
 
-# Import shared enterprise data components matching single source of truth rules
+current_runtime_dir = os.path.dirname(os.path.abspath(__file__))
+if current_runtime_dir not in sys.path:
+  sys.path.insert(0, current_runtime_dir)
+
 import libs
 
-# --- Configuration Constants ---
-VAULT_PATH = r'C:\Path\To\Your\Obsidian\Vault'
-QDRANT_LOCAL_URL = 'http://127.0.0.1:6333'
+def load_mcp_stack_config() -> dict:
+  """Parse centralized yaml context deployment schema to decouple infrastructure parameters."""
+  ai_config_env = os.environ.get('AI_CONFIG_PATH')
+  if ai_config_env and os.path.exists(ai_config_env):
+    config_path = ai_config_env
+  else:
+    config_path = os.path.abspath(os.path.join(current_runtime_dir, '..', '..', '.ai', 'conf', 'mcp.conf.yml'))
+    if not os.path.exists(config_path):
+      config_path = r'C:\Users\gadeshi\.ai\conf\mcp.conf.yml'
 
-# Host-to-container loop client initialization
+  default_config = {
+    'qdrant_url': 'http://127.0.0.1:8093',
+    'collection_name': 'obsidian_knowledge',
+    'vault_path': 'D:\\Obsidian\\Vaults\\v-dev'
+  }
+
+  if not os.path.exists(config_path):
+    print(f'[WARNING] Stack configuration matrix missing at: {config_path}. Using safe fallbacks.', file=sys.stderr)
+    return default_config
+
+  try:
+    with open(config_path, 'r', encoding='utf-8') as f:
+      content = f.read()
+
+    url_match = re.search(r'qdrant_rest_port:\s*(\d+)', content)
+    collection_match = re.search(r'collection_name:\s*[\'"]?([^\'"\s]+)[\'"]?', content)
+    vault_match = re.search(r'vault_path:\s*[\'"]?([^\''"\r\n]+)[\'"]?', content)
+
+    detected_port = int(url_match.group(1)) if url_match else 8093
+    return {
+      'qdrant_url': f'http://127.0.0.1:{detected_port}',
+      'collection_name': collection_match.group(1) if collection_match else default_config['collection_name'],
+      'vault_path': vault_match.group(1) if vault_match else default_config['vault_path']
+    }
+  except Exception as e:
+    print(f'[ERROR] Failed to extract tokens from mcp.conf.yml for watcher: {str(e)}. Using fallbacks.', file=sys.stderr)
+    return default_config
+
+
+runtime_env = load_mcp_stack_config()
+QDRANT_LOCAL_URL = runtime_env['qdrant_url']
+COLLECTION_NAME = runtime_env['collection_name']
+VAULT_PATH = runtime_env['vault_path']
+
 qdrant_client = libs.get_qdrant_client(QDRANT_LOCAL_URL)
-vault_file_index = {}
-
-
-def update_vault_index(vault_path: str):
-  """Scan and map absolute indexing coordinates inside target vault."""
-  global vault_file_index
-  new_index = {}
-  for root, _, files in os.walk(vault_path):
-    for file in files:
-      if file.endswith('.md'):
-        note_name = os.path.splitext(file)[0]
-        new_index[note_name] = os.path.join(root, file)
-  vault_file_index = new_index
-
-
-def resolve_transclusions(content: str, current_file_path: str, vault_file_index: dict, visited=None) -> str:
-  """Recursively assemble nested note components to prevent content truncation."""
-  if visited is None:
-    visited = set()
-
-  abs_current_path = os.path.abspath(current_file_path)
-  if abs_current_path in visited:
-    return ''
-
-  visited.add(abs_current_path)
-  transclusion_pattern = r'!\[\[([^\]|#]+)(?:#[^\]]*)?\]\]'
-
-  def replace_match(match):
-    note_name = match.group(1).strip()
-    target_path = vault_file_index.get(note_name)
-
-    if target_path and os.path.exists(target_path):
-      try:
-        with open(target_path, 'r', encoding='utf-8') as f:
-          child_content = f.read()
-        child_content = re.sub(r'^---[\s\S]*?---', '', child_content).strip()
-        return resolve_transclusions(child_content, target_path, vault_file_index, visited.copy())
-      except Exception:
-        return f'\n[ERROR: Failed to resolve transclusion for {note_name}]\n'
-    return match.group(0)
-
-  return re.sub(transclusion_pattern, replace_match, content)
-
-
-def clean_markdown(content: str) -> str:
-  """Normalize Obsidian structural parameters and strip raw metadata frontmatter blocks."""
-  content = re.sub(r'^---[\s\S]*?---', '', content)
-  content = re.sub(r'\[\[([^\]|#]+)(?:[^\]]*)?\]\]', r'\1', content)
-  return content.strip()
 
 
 async def run_async_watcher():
   """Asynchronous loop entry point monitoring filesystem mutations via Rust backend layers."""
-
-  # Step 1: Enforce non-blocking background connection verification lock via shared libs async factory
   await libs.wait_for_qdrant(QDRANT_LOCAL_URL, interval=5)
 
-  # Step 2: Validate target collection schema layout is instantiated
   try:
-    await qdrant_client.get_collection(libs.COLLECTION_NAME)
+    await qdrant_client.get_collection(COLLECTION_NAME)
   except Exception:
     await qdrant_client.create_collection(
-      collection_name=libs.COLLECTION_NAME,
+      collection_name=COLLECTION_NAME,
       vectors_config=VectorParams(size=libs.VECTOR_SIZE, distance=Distance.COSINE),
     )
-    print(f'[INIT] Scaffolded pristine schema storage bucket: {libs.COLLECTION_NAME}')
+    print(f'[INIT] Scaffolded pristine schema storage bucket: {COLLECTION_NAME}', file=sys.stderr)
 
-  update_vault_index(VAULT_PATH)
-  print(f'\n[ONLINE] Graph-Aware Async RAG Daemon listening on: {VAULT_PATH}')
+  print(f'\n[ONLINE] Graph-Aware Async RAG Daemon listening on: {VAULT_PATH}', file=sys.stderr)
 
-  # Step 3: Trigger reactive stream capture loop using rust-backed awatch core engine
   async for changes in awatch(VAULT_PATH):
     for change_type, file_path in changes:
-      # Pass structural mutation paths directly into the optimized libs indexer pipeline
       await libs.index_file(
         file_path=file_path,
         vault_path=VAULT_PATH,
-        collection_name=libs.COLLECTION_NAME,
+        collection_name=COLLECTION_NAME,
         qdrant_client=qdrant_client
       )
 
 
 if __name__ == '__main__':
-  asyncio.run(run_async_watcher())
+  try:
+    asyncio.run(run_async_watcher())
+  except KeyboardInterrupt:
+    print('\n[OFFLINE] Async RAG Daemon gracefully terminated.', file=sys.stderr)

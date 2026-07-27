@@ -2,14 +2,14 @@ import os
 import re
 import sys
 import asyncio
+import hashlib
 import urllib.request
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import PointStruct
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 from sentence_transformers import SentenceTransformer
 
-# --- Single Source of Truth for Models and Database Layouts ---
-COLLECTION_NAME = 'obsidian_knowledge'
+# --- Single Source of Truth for Models & Dimension Space ---
 VECTOR_SIZE = 768
 EMBED_MODEL_NAME = 'nomic-ai/nomic-embed-text-v1.5'
 
@@ -55,7 +55,10 @@ def resolve_transclusions(content: str, current_file_path: str, vault_file_index
 async def wait_for_qdrant(url: str, interval=5):
   """Block execution until the target Qdrant container exposes responsive HTTP state endpoints."""
   print(f'>>> Awaiting connection to vector store endpoint at: {url}', file=sys.stderr)
-  health_endpoint = f'{url}/healthz'.replace('127.0.0.1', 'localhost')
+
+  # Sanitize the trailing slashes for stable connection state
+  base_url = url.rstrip('/')
+  health_endpoint = f'{base_url}/healthz'
 
   while True:
     try:
@@ -91,7 +94,8 @@ async def get_embedding(text: str, is_query: bool = False) -> list:
 
 def clean_markdown(content: str) -> str:
   content = re.sub(r'^---[\s\S]*?---', '', content)
-  content = re.sub(r'\[\[([^\]|#]+)(?:[^\]]*)?\]\]', r'\1', content)
+  # Strips [[Note|Alias]] or [[Note]] down to 'Note' without catastrophic backtracking
+  content = re.sub(r'\[\[([^\]|]+)(?:\|[^\]]*)?\]\]', r'\1', content)
   return content.strip()
 
 
@@ -154,8 +158,12 @@ async def index_file(file_path: str, vault_path: str, collection_name: str, qdra
       if not vector:
         continue
 
-      # Fixed deterministic identity map generation to intercept mutation tracking collisions
-      point_id = hash(f'{file_path}_{i}') & 0xFFFFFFFFFFFFFFFF
+      # --- DOS-7 Fix & SonarQube Compliance (python:S4790) ---
+      # Secure and stable SHA-256 seed layout ensures identity consistency between daemon restarts
+      seed_string = f'{file_path}_{i}'
+      hash_hex = hashlib.sha256(seed_string.encode('utf-8')).hexdigest()
+      point_id = int(hash_hex[:16], 16) # Convert the first 16 hex chars into a valid uint64 index
+
       points.append(PointStruct(id=point_id, vector=vector, payload={'text': text_payload, 'metadata': metadata}))
 
     if points:
@@ -169,4 +177,3 @@ async def index_file(file_path: str, vault_path: str, collection_name: str, qdra
 
   except Exception as e:
     print(f'[ERROR] Failed to index {file_path}: {str(e)}', file=sys.stderr)
-

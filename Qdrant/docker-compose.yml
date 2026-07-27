@@ -3,8 +3,8 @@ services:
     image: qdrant/qdrant:latest
     container_name: qdrant-vector-engine
     ports:
-      - '6333:6333'
-      - '6334:6334'
+      - '127.0.0.1:8093:6333'  # Host 8093 routes to Container 6333 REST
+      - '127.0.0.1:8094:6334'  # Host 8094 routes to Container 6334 gRPC
     volumes:
       - qdrant_storage:/qdrant/storage
     deploy:

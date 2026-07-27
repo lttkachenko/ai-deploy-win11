@@ -7,8 +7,11 @@
 # Centralized Environment Global Variables & Asset Layouts
 # -----------------------------------------------------------------
 macros:
+  SW_HOST: 127.0.0.1
+  SW_PORT: 8090
   global_repo: 'https://huggingface.co'
   resolve: resolve/main
+  ai_port: 8091
   ai_root: '%USERPROFILE%/.ai'
   models: ${ai_root}/models
   context: ${ai_root}/context

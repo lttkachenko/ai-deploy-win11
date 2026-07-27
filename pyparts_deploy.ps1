@@ -33,9 +33,9 @@ if (-not $pySpec) {
   throw '[FATAL] Missing active python_tooling specification block inside MANIFEST.json'
 }
 
-# Resolve target destination folder dynamically from manifest spec (DOS-8 Compliance)
-$normalizedTarget = $pySpec.target_dir.TrimStart('.\').TrimStart('/')
-$venvStorage = [System.IO.Path]::GetFullPath((Join-Path $homeDir $normalizedTarget))
+# Resolve target destination folder dynamically preserving Unix-style dot definitions (DOS-9)
+$cleanPath = $pySpec.target_dir -replace '^\\+','' -replace '^/+' -replace '^\.+[\\/]+',''
+$venvStorage = [System.IO.Path]::GetFullPath((Join-Path $homeDir $cleanPath))
 $pipExe = Join-Path $venvStorage 'Scripts\pip.exe'
 $pythonExe = Join-Path $venvStorage 'Scripts\python.exe'
 
@@ -80,9 +80,11 @@ Write-Host '   |-- Flushing DNS cache and forcing network cooldown...' -Foregrou
 & ipconfig.exe /flushdns | Out-Null
 Start-Sleep -Seconds 1
 
+# Extract and iterate over the flat declarative array directly mapped from the manifest spec
 foreach ($package in $pySpec.packages) {
   Write-Host "   |-- Synced Ingestion target: $package" -ForegroundColor Yellow
-  & $pipExe install $package --quiet
+  # Executing clean upstream delivery with active progress indicators visible to operator
+  & $pipExe install $package
 }
 
 Write-Host "`n>>> [SUCCESS] Python runtime nodes aligned with async architecture specifications!" -ForegroundColor Green
