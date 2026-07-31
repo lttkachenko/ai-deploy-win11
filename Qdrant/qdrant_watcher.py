@@ -1,5 +1,8 @@
+# .\Qdrant\qdrant_watcher.py - Graph-Aware Async RAG Filesystem Monitor
+# Style Enforced: Spaces 2, LF, SingleQuotes, Strict Quality Control
+# Single Source of Truth Alignment: Synchronized with declarative mcp.conf.yml metadata
+
 import os
-import re
 import sys
 import asyncio
 from watchfiles import awatch
@@ -12,7 +15,7 @@ if current_runtime_dir not in sys.path:
 import libs
 
 def load_mcp_stack_config() -> dict:
-  """Parse centralized yaml context deployment schema to decouple infrastructure parameters."""
+  """Parse centralized yaml context deployment schema via robust stream processing."""
   ai_config_env = os.environ.get('AI_CONFIG_PATH')
   if ai_config_env and os.path.exists(ai_config_env):
     config_path = ai_config_env
@@ -23,7 +26,7 @@ def load_mcp_stack_config() -> dict:
 
   default_config = {
     'qdrant_url': 'http://127.0.0.1:8093',
-    'collection_name': 'obsidian_knowledge',
+    'collection_name': 'db-dev',
     'vault_path': 'D:\\Obsidian\\Vaults\\v-dev'
   }
 
@@ -31,23 +34,34 @@ def load_mcp_stack_config() -> dict:
     print(f'[WARNING] Stack configuration matrix missing at: {config_path}. Using safe fallbacks.', file=sys.stderr)
     return default_config
 
+  detected_port = 8093
+  collection_name = default_config['collection_name']
+  vault_path = default_config['vault_path']
+
   try:
     with open(config_path, 'r', encoding='utf-8') as f:
-      content = f.read()
+      for line in f:
+        clean_line = line.strip()
+        if not clean_line or clean_line.startswith('#') or ':' not in clean_line:
+          continue
 
-    url_match = re.search(r'qdrant_rest_port:\s*(\d+)', content)
-    collection_match = re.search(r'collection_name:\s*[\'"]?([^\'"\s]+)[\'"]?', content)
-    vault_match = re.search(r'vault_path:\s*[\'"]?([^\''"\r\n]+)[\'"]?', content)
+        key, val = [raw.strip().strip("'\"") for raw in clean_line.split(':', 1)]
 
-    detected_port = int(url_match.group(1)) if url_match else 8093
-    return {
-      'qdrant_url': f'http://127.0.0.1:{detected_port}',
-      'collection_name': collection_match.group(1) if collection_match else default_config['collection_name'],
-      'vault_path': vault_match.group(1) if vault_match else default_config['vault_path']
-    }
+        if key == 'qdrant_rest_port' and val.isdigit():
+          detected_port = int(val)
+        elif key == 'db':
+          collection_name = val
+        elif key == 'vault':
+          vault_path = val
+
   except Exception as e:
     print(f'[ERROR] Failed to extract tokens from mcp.conf.yml for watcher: {str(e)}. Using fallbacks.', file=sys.stderr)
-    return default_config
+
+  return {
+    'qdrant_url': f'http://127.0.0.1:{detected_port}',
+    'collection_name': collection_name,
+    'vault_path': vault_path
+  }
 
 
 runtime_env = load_mcp_stack_config()
@@ -71,6 +85,21 @@ async def run_async_watcher():
     )
     print(f'[INIT] Scaffolded pristine schema storage bucket: {COLLECTION_NAME}', file=sys.stderr)
 
+  print(f'\n[HYDRATE] Triggering manual historical scan for: {VAULT_PATH}', file=sys.stderr)
+
+  # Recursively discover and index all legacy markdown assets on startup boundary
+  for root, _, files in os.walk(VAULT_PATH):
+    for file in files:
+      if file.endswith('.md'):
+        full_file_path = os.path.join(root, file)
+        await libs.index_file(
+          file_path=full_file_path,
+          vault_path=VAULT_PATH,
+          collection_name=COLLECTION_NAME,
+          qdrant_client=qdrant_client
+        )
+
+  print(f'[SUCCESS] Vault hydration completed. Syncing real-time mutations...', file=sys.stderr)
   print(f'\n[ONLINE] Graph-Aware Async RAG Daemon listening on: {VAULT_PATH}', file=sys.stderr)
 
   async for changes in awatch(VAULT_PATH):

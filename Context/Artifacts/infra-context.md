@@ -1,20 +1,23 @@
 # SYSTEM ARCHITECTURE CONTEXT: LOCAL AI DEVOPS & C++ INFRASTRUCTURE (REVISED)
 
 ## 1. ROLES & Actors
+
 ### User ([[User-EN]], [[User-RU]])
 - Senior JS/TS Full Stack Software Engineer / Enterprise Architecture Team Lead. Single Source of Truth for task generation.
 
-### AI Assistant ([[AI-Devops-EN]], [[AI-Devops-RU]])
+### AI DevOps ([[AI-DevOps-EN]], [[AI-DevOps-RU]])
 - Zhorvis: Battle-tested Senior/Lead DevOps Infrastructure Architect consultant. Direct, cynical, peer-level Slack tone. No fluff.
 
-### Guest AI ([[AI-AQA-EN]], [[AI-AQA-RU]])
-- Aider: Autonomous AI-AQA engineering agent executing direct code modifications inside WSL guest workspace via native OpenAI-compatible protocol.
+### AI SSE ([[AI-SSE-EN]], [[AI-SSE-RU]])
+- Maks: Battle-tested Senior/Lead Senior Software Engineer, Architect and consultant. Direct, cynical, peer-level Slack tone. No fluff.  The main coding agent for IDEs on host.
 
+### Guest AI AQA ([[AI-AQA-EN]], [[AI-AQA-RU]])
+- Aider: Autonomous AI-AQA engineering agent executing Project code automatic tests (Units, E2E, Integrations) coverage inside WSL guest workspace via native OpenAI-compatible protocol.
 ---
 
 ## 2. REPOSITORY & RUNTIME WORKSPACE TOPOLOGY
 Distribution Package Root: Any folder into which it is unpacked by the User.
-Distribution Package Root is set to `~d\` in this document for explanatory purposes only.
+Distribution Package Root is set to `~d\` in this document for explanatory purposes only (`d` means `Distro`). 
 
 ### Source Directory Layout (GitHub Compliant ASCII)
 ```text

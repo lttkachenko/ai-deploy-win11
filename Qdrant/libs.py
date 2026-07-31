@@ -1,3 +1,7 @@
+# .\Qdrant\libs.py - Async RAG Vector Core Engine
+# Style Enforced: Spaces 2, LF, SingleQuotes, Strict Quality Control
+# Single Source of Truth Alignment: Strong type compliance with modern Qdrant SDK
+
 import os
 import re
 import sys
@@ -5,7 +9,7 @@ import asyncio
 import hashlib
 import urllib.request
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import PointStruct
+from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue, FilterSelector
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 from sentence_transformers import SentenceTransformer
 
@@ -84,7 +88,6 @@ async def get_embedding(text: str, is_query: bool = False) -> list:
     prefixed_text = prefix + text
 
     # Safely offload heavy CPU tensor calculations to a separate thread boundary
-    # This prevents the synchronous .encode() from blocking the global async event loop
     vector = await asyncio.to_thread(lambda: embedding_engine.encode(prefixed_text).tolist())
     return vector
   except Exception as e:
@@ -136,7 +139,16 @@ async def index_file(file_path: str, vault_path: str, collection_name: str, qdra
     if chunks is None:
       await qdrant_client.delete(
         collection_name=collection_name,
-        points_selector={'match': {'key': 'metadata.source_file', 'value': os.path.basename(file_path)}}
+        points_selector=FilterSelector(
+          filter=Filter(
+            must=[
+              FieldCondition(
+                key='metadata.source_file',
+                match=MatchValue(value=os.path.basename(file_path))
+              )
+            ]
+          )
+        )
       )
       print(f'[PURGED] Removed obsolete vectors for deleted file: {os.path.basename(file_path)}')
       return
@@ -170,7 +182,16 @@ async def index_file(file_path: str, vault_path: str, collection_name: str, qdra
       # Clear obsolete state records non-blockingly to eliminate double-indexing collisions
       await qdrant_client.delete(
         collection_name=collection_name,
-        points_selector={'match': {'key': 'metadata.source_file', 'value': os.path.basename(file_path)}}
+        points_selector=FilterSelector(
+          filter=Filter(
+            must=[
+              FieldCondition(
+                key='metadata.source_file',
+                match=MatchValue(value=os.path.basename(file_path))
+              )
+            ]
+          )
+        )
       )
       await qdrant_client.upsert(collection_name=collection_name, points=points)
       print(f'[SUCCESS] Indexed: {os.path.basename(file_path)}')

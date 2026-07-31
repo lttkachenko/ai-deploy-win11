@@ -3,4 +3,4 @@
 # -----------------------------------------------------------------
 mcp-servers:
   qdrant-rag:
-    url: "http://win-host:8000/sse"
+    url: "http://win-host:8095/sse"

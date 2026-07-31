@@ -12,6 +12,7 @@ $aiRoot = Join-Path $homeDir '.ai'
 $mcpRuntimeDir = Join-Path $aiRoot 'venv\mcp'
 $confFolder = Join-Path $aiRoot 'conf'
 $mcpConfigPath = Join-Path $confFolder 'mcp.conf.yml'
+$binFolder = Join-Path $aiRoot 'bin'
 
 # Dynamic fallback discovery: check if matrix template is inside local distribution workspace (DOS-9)
 $sourceConfig = Join-Path $PSScriptRoot 'mcp.conf.yml'
@@ -85,7 +86,18 @@ if (-not $Connected) {
   throw "[FATAL] Handshake verification failed. Qdrant cluster unready at endpoint: $HealthEndpoint"
 }
 
-# --- Phase 4: Sub-Chain Execution Integration ---
+# --- Phase 4: Sub-Chain Execution Integration & Utility Migration ---
+$sourceHealthz = Join-Path $PSScriptRoot 'qdrant_healthz.ps1'
+$targetHealthz = Join-Path $binFolder 'qdrant_healthz.ps1'
+
+if (Test-Path $sourceHealthz) {
+  if (-not (Test-Path $binFolder)) { New-Item -ItemType Directory -Path $binFolder | Out-Null }
+  Copy-Item -Path $sourceHealthz -Destination $targetHealthz -Force
+  Write-Host '  |-- Migrated qdrant_healthz.ps1 utility engine to runtime production bin.' -ForegroundColor Green
+} else {
+  Write-Warning "[WARN] Diagnostic source utility 'qdrant_healthz.ps1' not identified inside current script path."
+}
+
 $mcpDeployScript = Join-Path $PSScriptRoot 'mcp_deploy.ps1'
 if (-not (Test-Path $mcpDeployScript)) {
   throw "[FATAL] Decoupled downstream deployment script missing: $mcpDeployScript"

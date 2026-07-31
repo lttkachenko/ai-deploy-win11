@@ -21,9 +21,16 @@ if (-not (Test-Path $localLibs)) { throw '[FATAL] Missing baseline dependency as
 if (-not (Test-Path $localMcp)) { throw '[FATAL] Missing baseline dependency asset: Qdrant\qdrant_mcp.py' }
 if (-not (Test-Path $localWatcher)) { throw '[FATAL] Missing baseline dependency asset: Qdrant\qdrant_watcher.py' }
 
-Copy-Item -Path $localLibs -Destination $mcpRuntimeDir -Force
-Copy-Item -Path $localMcp -Destination $mcpRuntimeDir -Force
-Copy-Item -Path $localWatcher -Destination $mcpRuntimeDir -Force
+if (-not (Test-Path $mcpRuntimeDir)) { New-Item -ItemType Directory -Path $mcpRuntimeDir | Out-Null }
+if (-not (Test-Path $logStorage)) { New-Item -ItemType Directory -Path $logStorage | Out-Null }
+
+$runtimeLibs = Join-Path $mcpRuntimeDir 'libs.py'
+$runtimeMcp = Join-Path $mcpRuntimeDir 'qdrant_mcp.py'
+$runtimeWatcher = Join-Path $mcpRuntimeDir 'qdrant_watcher.py'
+
+Copy-Item -Path $localLibs -Destination $runtimeLibs -Force
+Copy-Item -Path $localMcp -Destination $runtimeMcp -Force
+Copy-Item -Path $localWatcher -Destination $runtimeWatcher -Force
 Write-Host '  |-- Synced pipeline components to user profile: .ai\venv\mcp\' -ForegroundColor Gray
 
 # --- Phase 2: Runtime Environment Discovery ---
@@ -37,93 +44,113 @@ if (-not (Test-Path $VenvPython)) {
   throw "[FATAL] Isolated virtual environment runtime python interpreter not detected at: $VenvPython"
 }
 
-# --- Phase 3: Watcher Scheduled Task Orchestration ---
-Write-Host '>>> Configuring persistent background filesystem tracking daemons...' -ForegroundColor Cyan
+$nssmExe = Join-Path $binStorage 'nssm.exe'
+if (-not (Test-Path $nssmExe)) { throw "[FATAL] NSSM binary asset missing: $nssmExe" }
 
-$watcherName = 'AI-RAG-Dev'
-if ($configContent -match 'watchers:[\s\S]*?name:\s*[''"]?([^\''"\n]+)[''"]?') {
-  $watcherName = $Matches[1].Trim()
+# Robust stream parsing for declarative mcp.conf.yml metadata to bypass regex drift
+$configMap = @{}
+$configContent -split "`n" | ForEach-Object {
+  $cleanLine = $_.Trim()
+  if ($cleanLine -and -not $cleanLine.StartsWith('#') -and $cleanLine.Contains(':')) {
+    $pair = $cleanLine.Split(':', 2)
+    $key = $pair[0].Trim()
+    $val = $pair[1].Trim().Trim("'").Trim('"')
+    if (-not $configMap.ContainsKey($key)) { $configMap[$key] = $val }
+  }
+}
+
+# --- Phase 2.5: Total Legacy Garbage Eviction (DOS-11 Hardening) ---
+Write-Host '>>> Purging legacy runtime debris and orphan process trees...' -ForegroundColor Yellow
+
+# 1. Terminate running Python processes to lift lock descriptors on runtime assets
+Stop-Process -Name 'python' -Force -ErrorAction SilentlyContinue
+
+# 2. Evict old scheduled tasks to stop background window pops
+Unregister-ScheduledTask -TaskName 'AI-RAG-Dev' -Confirm:$false -ErrorAction SilentlyContinue
+Unregister-ScheduledTask -TaskName 'ai-rag-wtr' -Confirm:$false -ErrorAction SilentlyContinue
+
+# 3. Clean up active old services if any exist under dirty states
+$dirtyServices = @('qdrant-mcp-service', 'ai-rag-wtr', 'ai-rag-srv')
+foreach ($srv in $dirtyServices) {
+  $srvCheck = Get-Service -Name $srv -ErrorAction SilentlyContinue
+  if ($srvCheck) {
+    Write-Host "  |-- Eradicating legacy unit: $srv" -ForegroundColor DarkYellow
+    Stop-Service -Name $srv -Force -ErrorAction SilentlyContinue
+    & $nssmExe remove $srv confirm | Out-Null
+  }
+}
+Start-Sleep -Seconds 2
+
+# --- Phase 3: Watcher Windows Service Orchestration via NSSM ---
+Write-Host '>>> Demonizing Filesystem RAG Watcher Service via NSSM Wrapper...' -ForegroundColor Cyan
+
+$watcherServiceName = 'ai-rag-wtr'
+if ($configMap.ContainsKey('name') -and $configContent -match 'watchers:[\s\S]*?name:\s*[''"]?([^\''"\n]+)[''"]?') {
+  $watcherServiceName = $Matches[1].Trim().ToLower().Replace(' ', '-')
 }
 
 $watcherVault = 'D:\Obsidian\Vaults\v-dev'
-if ($configContent -match 'vault_path:\s*[''"]?([^\''"\r\n]+)[''"]?') {
-  $watcherVault = $Matches[1].Trim()
-}
+if ($configMap.ContainsKey('vault')) { $watcherVault = $configMap['vault'] }
 
 if (Test-Path $watcherVault) {
-  # Evict legacy task registration locks to prevent thread fragmentation collisions
-  Unregister-ScheduledTask -TaskName $watcherName -Confirm:$false -ErrorAction SilentlyContinue
+  $watcherLogFile = Join-Path $logStorage "$watcherServiceName.log"
+  Write-Host "  |-- Compiling declarative service parameters for $watcherServiceName..." -ForegroundColor Green
 
-  $Action = New-ScheduledTaskAction -Execute $VenvPython -Argument "`"$localWatcher`"" -WorkingDirectory $mcpRuntimeDir
-  $Trigger = New-ScheduledTaskTrigger -AtLogOn
-  $Principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive
-  $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+  & $nssmExe install $watcherServiceName $VenvPython "`"$runtimeWatcher`"" | Out-Null
+  & $nssmExe set $watcherServiceName AppDirectory $mcpRuntimeDir | Out-Null
+  & $nssmExe set $watcherServiceName AppStdout $watcherLogFile | Out-Null
+  & $nssmExe set $watcherServiceName AppStderr $watcherLogFile | Out-Null
+  & $nssmExe set $watcherServiceName AppEnvironmentExtra "AI_CONFIG_PATH=$mcpConfigPath" "USERPROFILE=$homeDir" "PATH=$env:Path" | Out-Null
+  & $nssmExe set $watcherServiceName AppExit Default Restart | Out-Null
+  & $nssmExe set $watcherServiceName AppThrottle 5000 | Out-Null
 
-  Register-ScheduledTask -TaskName $watcherName -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings -Force | Out-Null
-  Start-ScheduledTask -TaskName $watcherName
-  Write-Host "[SUCCESS] Registered active self-stabilizing daemon task: $watcherName" -ForegroundColor Green
+  Start-Service -Name $watcherServiceName
+  Write-Host "[SUCCESS] Registered active self-stabilizing daemon service: $watcherServiceName" -ForegroundColor Green
 } else {
-  Write-Host "[WARNING] Target Vault directory missing, skipping task configuration: $watcherVault" -ForegroundColor Yellow
+  Write-Host "[WARNING] Target Vault directory missing, skipping watcher service configuration: $watcherVault" -ForegroundColor Yellow
 }
 
 # --- Phase 4: FastMCP Windows Service Orchestration via NSSM ---
 Write-Host '>>> Demonizing FastMCP Context Server Layer via NSSM Wrapper...' -ForegroundColor Cyan
 
-$serviceName = 'qdrant-mcp-service'
-if ($configContent -match 'servers:[\s\S]*?name:\s*[''"]?([^\''"\n]+)[''"]?') {
+$serviceName = 'ai-rag-srv'
+if ($configMap.ContainsKey('name') -and $configContent -match 'servers:[\s\S]*?name:\s*[''"]?([^\''"\n]+)[''"]?') {
   $serviceName = $Matches[1].Trim().ToLower().Replace(' ', '-')
 }
 
-$nssmExe = Join-Path $binStorage 'nssm.exe'
 $runtimeLogFile = Join-Path $logStorage "$serviceName.log"
-
-if (-not (Test-Path $nssmExe)) { throw "[FATAL] NSSM binary asset missing: $nssmExe" }
-
-$serviceCheck = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-if ($serviceCheck) {
-  Write-Host "  |-- Active context service ($serviceName) found. Executing graceful cleanup sequence..." -ForegroundColor Yellow
-  Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
-  & $nssmExe remove $serviceName confirm | Out-Null
-  Start-Sleep -Seconds 1
-}
 
 Write-Host "  |-- Compiling declarative service parameters for $serviceName..." -ForegroundColor Green
 
-& $nssmExe install $serviceName $VenvPython $localMcp | Out-Null
+& $nssmExe install $serviceName $VenvPython "`"$runtimeMcp`"" | Out-Null
 & $nssmExe set $serviceName AppDirectory $mcpRuntimeDir | Out-Null
 & $nssmExe set $serviceName AppStdout $runtimeLogFile | Out-Null
 & $nssmExe set $serviceName AppStderr $runtimeLogFile | Out-Null
-
-# --- DOS-9 Hardening: Inject absolute configuration path mapping matrix into LocalSystem space ---
 & $nssmExe set $serviceName AppEnvironmentExtra "AI_CONFIG_PATH=$mcpConfigPath" "USERPROFILE=$homeDir" "PATH=$env:Path" | Out-Null
 & $nssmExe set $serviceName AppExit Default Restart | Out-Null
 & $nssmExe set $serviceName AppThrottle 5000 | Out-Null
 
 $mcpPort = 8095
-if ($configContent -match 'fastmcp_sse_port:\s*(\d+)') {
-  $mcpPort = [int]$Matches
-}
+if ($configMap.ContainsKey('port')) { $mcpPort = [int]$configMap['port'] }
 
 Start-Service -Name $serviceName
 
 # --- Phase 5: Verification and Validation Loops ---
 Write-Host '>>> Initiating runtime telemetry validations on active context layers...' -ForegroundColor Yellow
 
-# Validation 1: Verify Python Filesystem Watcher task status (DOS-9 Soft Validation)
+# Validation 1: Verify Python Filesystem Watcher service status
 if (Test-Path $watcherVault) {
-  $taskCheck = Get-ScheduledTask -TaskName $watcherName -ErrorAction SilentlyContinue
-  if ($taskCheck.State -ne 'Running' -and $taskCheck.State -ne 'Ready') {
-    throw "[FATAL] Watcher Scheduled Task state is unhealthy. Current state: $($taskCheck.State)"
+  $wtrCheck = Get-Service -Name $watcherServiceName -ErrorAction SilentlyContinue
+  if ($wtrCheck.Status -ne 'Running') {
+    throw "[FATAL] Watcher Service ($watcherServiceName) failed to boot. Check logs at: $watcherLogFile"
   }
-  Write-Host "  |-- Telemetry: Watcher Daemon Task ($watcherName) confirmed in active state cluster." -ForegroundColor Gray
-} else {
-  Write-Host "  |-- Telemetry: Watcher Task verification bypassed safely (physical directory skipped)." -ForegroundColor Yellow
+  Write-Host "  |-- Telemetry: Watcher Daemon Service ($watcherServiceName) confirmed in active state cluster." -ForegroundColor Gray
 }
 
 # Validation 2: Verify FastMCP Service status
 $srvCheck = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 if ($srvCheck.Status -ne 'Running') {
-  throw "[FATAL] FastMCP Windows Service failed to boot. Check logs at: $runtimeLogFile"
+  throw "[FATAL] FastMCP Windows Service ($serviceName) failed to boot. Check logs at: $runtimeLogFile"
 }
 
 # Validation 3: Verify FastMCP active socket allocation boundary via cyclic pre-flight barrier (DOS-7)

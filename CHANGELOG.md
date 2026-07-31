@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com).
 
+## [Development Snapshot] - DOS-11 (2026-07-31)
+
+### Added
+- (DOS-11) - Implemented a high-performance, asynchronous background workspace hydration scan loop inside `qdrant_watcher.py` using native `os.walk` streams to completely index legacy markdown assets on startup boundary before initiating the `watchfiles` event loop.
+- (DOS-11) - Integrated an automated pre-flight environment discovery and directory scavenging block into `qdrant_deploy.ps1` to migrate `qdrant_healthz.ps1` into the centralized production runtime binaries directory (`~/.ai/bin/`).
+- (DOS-11) - Introduced explicit, flexible path mapping capabilities inside `aider_run.sh` by provisioning the `-c` / `--config` CLI switch to natively intercept, override, and pass custom execution configuration slots.
+- (DOS-11) - Scaffolded a dedicated, isolated runtime telemetry collection boundary at `~/.aider/log/` backed by a native bash `tee` output redirection sequence inside `aider_run.sh` to capture unified stdout and stderr logs.
+
+### Modified
+- (DOS-11) - Refactored the core configuration parsing logic inside `qdrant_watcher.py` from fragile regex pattern filters to a low-complexity dictionary stream tokenizer (`Cognitive Complexity < 5`), ensuring stable token extraction for indented `db` and `vault` YAML mappings.
+- (DOS-11) - Migrated the filesystem RAG tracking engine inside `mcp_deploy.ps1` from an interactive Windows Scheduled Task wrapper to a headless, non-interactive Windows Service driven entirely by NSSM (`ai-rag-wtr`), suppressing workspace window pops.
+- (DOS-11) - Re-aligned the `Aider\aider_deploy.ps1` transport protocol to route the distribution deployment configuration template strictly into the unified internal profile runtime boundary location at `~/.aider/config.yml`.
+- (DOS-11) - Standardized the guest invocation wrapper inside `aider_run.sh` to forward absolute configuration file declarations directly via the native `--config` argument string, enforcing precise middleware endpoint resolution.
+
+### Fixed
+- (DOS-11) - Resolved a crippling `TypeError: 'NoneType' object is not subscriptable` crash inside `qdrant_watcher.py` by engineering a guaranteed dictionary fallback object return outside the configuration file stream iterator.
+- (DOS-11) - Eradicated a severe SonarQube syntax code quality alert (`python:S5857`) inside character classes by replacing duplicated, over-escaped quotation literals with safe, compliant stream token processing.
+- (DOS-11) - Corrected a fatal type-mismatch error inside `libs.py` (`Unsupported points selector type: <class 'dict'>`) by migrating raw dictionary query arrays into strictly-typed `FilterSelector`, `Filter`, `FieldCondition`, and `MatchValue` object models.
+- (DOS-11) - Mitigated an immediate `CommandNotFoundException` failure during Step 6 of `aider_deploy.ps1` by cross-compiling windows paths through the native `wsl -e wslpath` wrapper utility boundary.
+- (DOS-11) - Cleared a syntax error inside `aider_deploy.ps1` caused by unescaped nested single quotation marks enclosing the `throw` error boundaries, restoring strict PowerShell compilation metrics.
+- (DOS-11) - Resolved an immediate runtime initialization block inside `aider_run.sh` by decoupling the initial prompt parsing pipeline from non-existent flat file directory constraints (`prompts/default.md`), enabling pure vector-backed interactive chat modes.
+- (DOS-11) - Purged a silent deployment transport failure inside `aider_deploy.ps1` by deprecating unstable filesystem copy bridges in favor of a robust bash heredoc injection stream (`cat << 'EOF'`) to route configurations into the guest subsystem.
+
+### Known Issues
+- **Non-Interactive Environment Path Dropping**: Spawning the guest environment engine from abstract host terminal entries can occasionally skip parsing the user's `~/.bashrc` profile layer. Custom alias allocations like `aider-run` may drop out from remote execution threads, requiring operators to target the absolute script coordinate path (`~/.aider/aider_run.sh`) to maintain session persistence.
+
+---
+
 ## [Development Snapshot] - DOS-10 (2026-07-27)
 
 ### Added
