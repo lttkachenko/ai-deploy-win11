@@ -11,18 +11,17 @@ import urllib.request
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue, FilterSelector
 from langchain_text_splitters import MarkdownHeaderTextSplitter
-from sentence_transformers import SentenceTransformer
 
 # --- Single Source of Truth for Models & Dimension Space ---
 VECTOR_SIZE = 768
 EMBED_MODEL_NAME = 'nomic-ai/nomic-embed-text-v1.5'
 
-print('>>> Initializing Shared CPU Transformer Model [nomic-embed-text]...', file=sys.stderr)
-embedding_engine = SentenceTransformer(EMBED_MODEL_NAME, device='cpu')
-print('[SUCCESS] Shared Python inference layer loaded on CPU boundary.', file=sys.stderr)
+# Global reference slot for TS-like lazy initialization
+embedding_engine = None
 
 
 def update_vault_index(vault_path: str) -> dict:
+  """Recursively compile flat document name map to track deep markdown file targets."""
   new_index = {}
   for root, _, files in os.walk(vault_path):
     for file in files:
@@ -33,6 +32,7 @@ def update_vault_index(vault_path: str) -> dict:
 
 
 def resolve_transclusions(content: str, current_file_path: str, vault_file_index: dict, visited=None) -> str:
+  """Recursively resolve abstract Obsidian transclusion links into compiled textual layouts."""
   if visited is None:
     visited = set()
   abs_current_path = os.path.abspath(current_file_path)
@@ -59,14 +59,11 @@ def resolve_transclusions(content: str, current_file_path: str, vault_file_index
 async def wait_for_qdrant(url: str, interval=5):
   """Block execution until the target Qdrant container exposes responsive HTTP state endpoints."""
   print(f'>>> Awaiting connection to vector store endpoint at: {url}', file=sys.stderr)
-
-  # Sanitize the trailing slashes for stable connection state
   base_url = url.rstrip('/')
   health_endpoint = f'{base_url}/healthz'
 
   while True:
     try:
-      # Native lightweight polling block to eliminate external library footprint constraints
       await asyncio.to_thread(lambda: urllib.request.urlopen(health_endpoint, timeout=2.0))
       print('[SUCCESS] Vector store handshake verified. Moving to operational lifecycle.', file=sys.stderr)
       break
@@ -82,12 +79,19 @@ def get_qdrant_client(endpoint_url: str) -> AsyncQdrantClient:
 
 async def get_embedding(text: str, is_query: bool = False) -> list:
   """Unified local CPU-backed embedding factory complying with Nomic v1.5 specifications."""
+  global embedding_engine
   try:
-    # Nomic v1.5 API model compliance formatting rules injection
+    # --- DOS-12 TS-Like Lazy Destruction Import Matrix ---
+    # Torch and SentenceTransformer are only loaded into memory when required by active computations
+    if embedding_engine is None:
+      print('>>> [LAZY BOOT] Initializing Shared CPU Transformer Model [nomic-embed-text]...', file=sys.stderr)
+      from sentence_transformers import SentenceTransformer
+      embedding_engine = SentenceTransformer(EMBED_MODEL_NAME, device='cpu')
+      print('[SUCCESS] Shared Python inference layer loaded on CPU boundary.', file=sys.stderr)
+
     prefix = 'search_query: ' if is_query else 'search_document: '
     prefixed_text = prefix + text
 
-    # Safely offload heavy CPU tensor calculations to a separate thread boundary
     vector = await asyncio.to_thread(lambda: embedding_engine.encode(prefixed_text).tolist())
     return vector
   except Exception as e:
@@ -96,13 +100,14 @@ async def get_embedding(text: str, is_query: bool = False) -> list:
 
 
 def clean_markdown(content: str) -> str:
+  """Strip yaml frontmatter blocks and convert inner wiki-links safely without super-linear tracking traps."""
   content = re.sub(r'^---[\s\S]*?---', '', content)
-  # Strips [[Note|Alias]] or [[Note]] down to 'Note' without catastrophic backtracking
   content = re.sub(r'\[\[([^\]|]+)(?:\|[^\]]*)?\]\]', r'\1', content)
   return content.strip()
 
 
 def detect_language(text: str) -> str:
+  """Deterministic character subset analysis routing document text metadata payloads."""
   if bool(re.search('[а-яА-ЯёЁ]', text)):
     return 'ru'
   return 'en'
@@ -114,7 +119,6 @@ async def index_file(file_path: str, vault_path: str, collection_name: str, qdra
     return
 
   try:
-    # Encapsulate all synchronous filesystem I/O operations into a dedicated isolated worker thread
     def sync_file_parsing_pipeline():
       if not os.path.exists(file_path):
         return None
@@ -132,10 +136,13 @@ async def index_file(file_path: str, vault_path: str, collection_name: str, qdra
       splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
       return splitter.split_text(cleaned_content)
 
-    # Execute disk I/O and markdown splitting off the main event loop thread
     chunks = await asyncio.to_thread(sync_file_parsing_pipeline)
 
-    # If chunks returns None, it indicates a strict file deletion event sequence
+    # Calculate unified relative path strings and directory tokens matching REST-like conventions
+    relative_raw_path = os.path.relpath(file_path, vault_path)
+    uri_path = os.path.splitext(relative_raw_path)[0].replace('\\', '/')
+    parent_path = os.path.dirname(uri_path)
+
     if chunks is None:
       await qdrant_client.delete(
         collection_name=collection_name,
@@ -143,14 +150,14 @@ async def index_file(file_path: str, vault_path: str, collection_name: str, qdra
           filter=Filter(
             must=[
               FieldCondition(
-                key='metadata.source_file',
-                match=MatchValue(value=os.path.basename(file_path))
+                key='metadata.uri_path',
+                match=MatchValue(value=uri_path)
               )
             ]
           )
         )
       )
-      print(f'[PURGED] Removed obsolete vectors for deleted file: {os.path.basename(file_path)}')
+      print(f'[PURGED] Removed obsolete vectors for deleted file URI: {uri_path}')
       return
 
     if not chunks:
@@ -160,41 +167,43 @@ async def index_file(file_path: str, vault_path: str, collection_name: str, qdra
     for i, chunk in enumerate(chunks):
       text_payload = chunk.page_content
       metadata = chunk.metadata.copy()
+
+      # Inject precise architectural parameters according to DOS-12 layout compliance rules
       metadata['source_file'] = os.path.basename(file_path)
+      metadata['uri_path'] = uri_path
+      metadata['parent_path'] = parent_path
+      metadata['lang'] = detect_language(text_payload)
 
       if not text_payload.strip():
         continue
 
-      # Fully async safe token generation block executed on separate system thread clusters
       vector = await get_embedding(text_payload, is_query=False)
       if not vector:
         continue
 
-      # --- DOS-7 Fix & SonarQube Compliance (python:S4790) ---
-      # Secure and stable SHA-256 seed layout ensures identity consistency between daemon restarts
+      # Cryptographic SHA-256 identifier cast guarantees record uniqueness across restarts
       seed_string = f'{file_path}_{i}'
       hash_hex = hashlib.sha256(seed_string.encode('utf-8')).hexdigest()
-      point_id = int(hash_hex[:16], 16) # Convert the first 16 hex chars into a valid uint64 index
+      point_id = int(hash_hex[:16], 16)
 
       points.append(PointStruct(id=point_id, vector=vector, payload={'text': text_payload, 'metadata': metadata}))
 
     if points:
-      # Clear obsolete state records non-blockingly to eliminate double-indexing collisions
       await qdrant_client.delete(
         collection_name=collection_name,
         points_selector=FilterSelector(
           filter=Filter(
             must=[
               FieldCondition(
-                key='metadata.source_file',
-                match=MatchValue(value=os.path.basename(file_path))
+                key='metadata.uri_path',
+                match=MatchValue(value=uri_path)
               )
             ]
           )
         )
       )
       await qdrant_client.upsert(collection_name=collection_name, points=points)
-      print(f'[SUCCESS] Indexed: {os.path.basename(file_path)}')
+      print(f'[SUCCESS] Indexed URI: {uri_path} (Parent: /{parent_path if parent_path else "root"})')
 
   except Exception as e:
     print(f'[ERROR] Failed to index {file_path}: {str(e)}', file=sys.stderr)

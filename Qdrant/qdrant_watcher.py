@@ -25,7 +25,7 @@ def load_mcp_stack_config() -> dict:
       config_path = r'C:\Users\gadeshi\.ai\conf\mcp.conf.yml'
 
   default_config = {
-    'qdrant_url': 'http://127.0.0.1:8093',
+    'qdrant_url': 'http://localhost:8093',
     'collection_name': 'db-dev',
     'vault_path': 'D:\\Obsidian\\Vaults\\v-dev'
   }
@@ -34,7 +34,7 @@ def load_mcp_stack_config() -> dict:
     print(f'[WARNING] Stack configuration matrix missing at: {config_path}. Using safe fallbacks.', file=sys.stderr)
     return default_config
 
-  detected_port = 8093
+  detected_url = default_config['qdrant_url']
   collection_name = default_config['collection_name']
   vault_path = default_config['vault_path']
 
@@ -47,8 +47,8 @@ def load_mcp_stack_config() -> dict:
 
         key, val = [raw.strip().strip("'\"") for raw in clean_line.split(':', 1)]
 
-        if key == 'qdrant_rest_port' and val.isdigit():
-          detected_port = int(val)
+        if key == 'store':
+          detected_url = val
         elif key == 'db':
           collection_name = val
         elif key == 'vault':
@@ -58,7 +58,7 @@ def load_mcp_stack_config() -> dict:
     print(f'[ERROR] Failed to extract tokens from mcp.conf.yml for watcher: {str(e)}. Using fallbacks.', file=sys.stderr)
 
   return {
-    'qdrant_url': f'http://127.0.0.1:{detected_port}',
+    'qdrant_url': detected_url,
     'collection_name': collection_name,
     'vault_path': vault_path
   }
@@ -87,7 +87,6 @@ async def run_async_watcher():
 
   print(f'\n[HYDRATE] Triggering manual historical scan for: {VAULT_PATH}', file=sys.stderr)
 
-  # Recursively discover and index all legacy markdown assets on startup boundary
   for root, _, files in os.walk(VAULT_PATH):
     for file in files:
       if file.endswith('.md'):

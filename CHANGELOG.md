@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com).
 
+### [Development Snapshot] - DOS-12 (2026-08-02)
+
+### Added
+- (DOS-12) - Engineered a standalone, high-performance REST routing gateway engine inside `mcp_api.py` implementing a unified `/` POST endpoint to completely decouple the system client interface from raw JSON-RPC protocol layers.
+- (DOS-12) - Introduced a `ZERO_TEXT_OVERHEAD_AGGREGATION` routing policy within `mcp_api.py` that utilizes Qdrant whitelisted payload scrolls (`with_payload=['metadata.uri_path']`) to dynamically compile virtual directory trees without RAM fragmentation or heavy string parsing latencies.
+- (DOS-12) - Implemented a modern FastAPI `lifespan` context manager loop inside the production gateway layer to cleanly spin up and run the native FastMCP process on an isolated internal port (`8096`), successfully freeing port `8000` for host environment tasks.
+
+### Modified
+- (DOS-12) - Refactored the core vector ingestion model inside `libs.py` to compute and inject Unix-like `uri_path` and `parent_path` metadata entries derived from absolute filesystem coordinates to build a virtual storage topology in Qdrant.
+- (DOS-12) - Migrated the shared inference initialization loop inside `libs.py` to a dynamic singleton reference slot inside `get_embedding` to allow lazy-loading of the PyTorch and SentenceTransformer modules on demand.
+- (DOS-12) - Re-engineered the centralized token retrieval pipeline inside `mcp_deploy.ps1` into a strict, section-aware YAML state-machine parser driven by native `.Split(':', 2)` operators to accurately isolate colliding `port` and `name` attributes across `servers` and `watchers` blocks.
+- (DOS-12) - Standardized the daemon profile allocation inside `mcp_deploy.ps1` by forcing early string expansion of the native .NET API `[System.Environment]::GetFolderPath("UserProfile")` and encapsulating string variables in curly braces (`${QdrantHost}:${QdrantPort}`) to prevent PowerShell token evaluation crashes.
+
+### Fixed
+- (DOS-12) - Eradicated a severe multi-threaded startup deadlock during cold-boot sequences by isolating the heavy CPU-bound PyTorch model loading thread (`LoaderLock`) from the main FastMCP socket binding loop interface via deep lazy-loading.
+- (DOS-12) - Resolved an immediate runtime initialization drop caused by passing primitive dictionary queries to the modernized Qdrant SDK engine by standardizing all point eviction selectors strictly on concrete `Filter` object models.
+- (DOS-12) - Eliminated persistent incremental database indexing leakages by migrating the vector mutation pipeline to an explicit cryptographic SHA-256 unique identifier protocol targeted at absolute `uri_path` constraints.
+- (DOS-12) - Rectified a deployment blocker where corrupt legacy service configurations trapped NSSM in unmanaged states by deploying low-level `sc.exe delete` and explicit registry purges (`HKLM:\SYSTEM\CurrentControlSet\Services`) prior to resource orchestration.
+- (DOS-12) - Fixed a critical Python `TypeError` inside `mcp_api.py` caused by illegal string-to-list concatenation during sub-directory offset splits by standardizing target path evaluation limits strictly on native string formatting tokens.
+
+### Known Issues
+- **Windows LocalSystem Network Binding Block**: Running the background service nodes under the unprivileged `LocalSystem` account wrapper can occasionally cause the native .NET socket validation layers inside the deployment script to drop out due to strict host-level IPv6 loopback routing constraints, requiring operator profile context fallback map alignment.
+
+---
+
 ## [Development Snapshot] - DOS-11 (2026-07-31)
 
 ### Added

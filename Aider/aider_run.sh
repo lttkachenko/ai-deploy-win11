@@ -8,7 +8,7 @@ AIDER_DIR="$HOME/.aider"
 LOG_DIR="$AIDER_DIR/log"
 
 # --- Default Parameters ---
-ROLE="aqa-tatar"
+ROLE="AI-AQA"
 PROMPT_FILE=""
 CONFIG_FILE="$AIDER_DIR/aider.conf.yml"
 
@@ -16,7 +16,7 @@ CONFIG_FILE="$AIDER_DIR/aider.conf.yml"
 usage() {
   echo "Usage: aider-run [options] [-- aider_arguments]"
   echo "Options:"
-  echo "  -r, --role <name>      Target role token for dynamic Qdrant RAG hydration (Default: aqa-tatar)"
+  echo "  -r, --role <name>      Target role token for dynamic Qdrant RAG hydration (Default: AI-AQA)"
   echo "  -m, --message <path>   Path to custom task prompt file (Optional)"
   echo "  -c, --config <path>    Path to specific Aider configuration file (Default: aider.conf.yml)"
   echo "  -h, --help             Display this help message"
@@ -73,7 +73,7 @@ TEMP_INSTRUCTION=$(mktemp)
 
 {
   # Fire the unified identity hydration token.
-  echo "[MARKER HYDRATE] $ROLE"
+  echo "HYDRATE $ROLE"
   echo -e "\n"
 
   # Append immediate isolated project task only if explicitly provided via CLI

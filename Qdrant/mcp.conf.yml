@@ -1,10 +1,10 @@
 # -----------------------------------------------------------------
-# Declarative FastMCP Network SSE Server Configuration
+# Declarative FastMCP Network SSE Server Configuration Matrix (DOS-12)
 # -----------------------------------------------------------------
 servers:
   qdrant-srv:
     name: ai-rag-srv
-    host: "http://win-host:8095/sse"
+    host: "http://127.0.0.1:8095/sse"
     port: 8095
     api_key: dev-srv-key-default
 
@@ -14,3 +14,6 @@ watchers:
     db: db-dev
     vault: 'D:\Obsidian\Vaults\v-dev'
     api_key: dev-wtr-key-default
+    # Single Source of Truth entry point for the entire cluster
+    store: "http://127.0.0.1:8093"
+    port: 8093

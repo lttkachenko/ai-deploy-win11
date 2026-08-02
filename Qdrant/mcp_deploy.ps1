@@ -1,6 +1,5 @@
 # .\Qdrant\mcp_deploy.ps1 - FastMCP & Daemon Orchestration Pipeline
 # Style Enforced: Spaces 2, LF, SingleQuotes, Strict Quality Control
-
 $ErrorActionPreference = 'Stop'
 
 # --- Phase 1: Environment Discovery & Sync ---
@@ -13,29 +12,32 @@ $mcpConfigPath = Join-Path $aiRoot 'conf\mcp.conf.yml'
 
 Write-Host '>>> Synchronizing shared data libraries and execution modules...' -ForegroundColor Cyan
 
-$localLibs = Join-Path $PSScriptRoot 'libs.py'
-$localMcp = Join-Path $PSScriptRoot 'qdrant_mcp.py'
+$localLibs    = Join-Path $PSScriptRoot 'libs.py'
+$localMcp     = Join-Path $PSScriptRoot 'qdrant_mcp.py'
 $localWatcher = Join-Path $PSScriptRoot 'qdrant_watcher.py'
+$localApi     = Join-Path $PSScriptRoot 'mcp_api.py'
 
-if (-not (Test-Path $localLibs)) { throw '[FATAL] Missing baseline dependency asset: Qdrant\libs.py' }
-if (-not (Test-Path $localMcp)) { throw '[FATAL] Missing baseline dependency asset: Qdrant\qdrant_mcp.py' }
+if (-not (Test-Path $localLibs))    { throw '[FATAL] Missing baseline dependency asset: Qdrant\libs.py' }
+if (-not (Test-Path $localMcp))     { throw '[FATAL] Missing baseline dependency asset: Qdrant\qdrant_mcp.py' }
 if (-not (Test-Path $localWatcher)) { throw '[FATAL] Missing baseline dependency asset: Qdrant\qdrant_watcher.py' }
+if (-not (Test-Path $localApi))     { throw '[FATAL] Missing baseline dependency asset: Qdrant\mcp_api.py' }
 
 if (-not (Test-Path $mcpRuntimeDir)) { New-Item -ItemType Directory -Path $mcpRuntimeDir | Out-Null }
-if (-not (Test-Path $logStorage)) { New-Item -ItemType Directory -Path $logStorage | Out-Null }
+if (-not (Test-Path $logStorage))    { New-Item -ItemType Directory -Path $logStorage | Out-Null }
 
-$runtimeLibs = Join-Path $mcpRuntimeDir 'libs.py'
-$runtimeMcp = Join-Path $mcpRuntimeDir 'qdrant_mcp.py'
+$runtimeLibs    = Join-Path $mcpRuntimeDir 'libs.py'
+$runtimeMcp     = Join-Path $mcpRuntimeDir 'qdrant_mcp.py'
 $runtimeWatcher = Join-Path $mcpRuntimeDir 'qdrant_watcher.py'
+$runtimeApi     = Join-Path $mcpRuntimeDir 'mcp_api.py'
 
-Copy-Item -Path $localLibs -Destination $runtimeLibs -Force
-Copy-Item -Path $localMcp -Destination $runtimeMcp -Force
+Copy-Item -Path $localLibs    -Destination $runtimeLibs    -Force
+Copy-Item -Path $localMcp     -Destination $runtimeMcp     -Force
 Copy-Item -Path $localWatcher -Destination $runtimeWatcher -Force
-Write-Host '  |-- Synced pipeline components to user profile: .ai\venv\mcp\' -ForegroundColor Gray
+Copy-Item -Path $localApi     -Destination $runtimeApi     -Force
+Write-Host ' |-- Synced pipeline components to user profile: .ai\venv\mcp\' -ForegroundColor Gray
 
 # --- Phase 2: Runtime Environment Discovery ---
 $configContent = Get-Content -Path $mcpConfigPath -Raw
-
 $VenvPython = Join-Path $aiRoot 'venv\mcp\Scripts\python.exe'
 if (-not (Test-Path $VenvPython)) {
   $VenvPython = Join-Path $aiRoot 'venv\Scripts\python.exe'
@@ -74,7 +76,7 @@ $dirtyServices = @('qdrant-mcp-service', 'ai-rag-wtr', 'ai-rag-srv')
 foreach ($srv in $dirtyServices) {
   $srvCheck = Get-Service -Name $srv -ErrorAction SilentlyContinue
   if ($srvCheck) {
-    Write-Host "  |-- Eradicating legacy unit: $srv" -ForegroundColor DarkYellow
+    Write-Host " |-- Eradicating legacy unit: $srv" -ForegroundColor DarkYellow
     Stop-Service -Name $srv -Force -ErrorAction SilentlyContinue
     & $nssmExe remove $srv confirm | Out-Null
   }
@@ -94,7 +96,7 @@ if ($configMap.ContainsKey('vault')) { $watcherVault = $configMap['vault'] }
 
 if (Test-Path $watcherVault) {
   $watcherLogFile = Join-Path $logStorage "$watcherServiceName.log"
-  Write-Host "  |-- Compiling declarative service parameters for $watcherServiceName..." -ForegroundColor Green
+  Write-Host " |-- Compiling declarative service parameters for $watcherServiceName..." -ForegroundColor Green
 
   & $nssmExe install $watcherServiceName $VenvPython "`"$runtimeWatcher`"" | Out-Null
   & $nssmExe set $watcherServiceName AppDirectory $mcpRuntimeDir | Out-Null
@@ -117,10 +119,9 @@ $serviceName = 'ai-rag-srv'
 if ($configMap.ContainsKey('name') -and $configContent -match 'servers:[\s\S]*?name:\s*[''"]?([^\''"\n]+)[''"]?') {
   $serviceName = $Matches[1].Trim().ToLower().Replace(' ', '-')
 }
-
 $runtimeLogFile = Join-Path $logStorage "$serviceName.log"
 
-Write-Host "  |-- Compiling declarative service parameters for $serviceName..." -ForegroundColor Green
+Write-Host " |-- Compiling declarative service parameters for $serviceName..." -ForegroundColor Green
 
 & $nssmExe install $serviceName $VenvPython "`"$runtimeMcp`"" | Out-Null
 & $nssmExe set $serviceName AppDirectory $mcpRuntimeDir | Out-Null
@@ -144,7 +145,7 @@ if (Test-Path $watcherVault) {
   if ($wtrCheck.Status -ne 'Running') {
     throw "[FATAL] Watcher Service ($watcherServiceName) failed to boot. Check logs at: $watcherLogFile"
   }
-  Write-Host "  |-- Telemetry: Watcher Daemon Service ($watcherServiceName) confirmed in active state cluster." -ForegroundColor Gray
+  Write-Host " |-- Telemetry: Watcher Daemon Service ($watcherServiceName) confirmed in active state cluster." -ForegroundColor Gray
 }
 
 # Validation 2: Verify FastMCP Service status
@@ -157,15 +158,14 @@ if ($srvCheck.Status -ne 'Running') {
 $McpConnected = $false
 $McpMaxAttempts = 12
 $McpAttempt = 1
-
-Write-Host "  |-- Awaiting responsive socket hook on FastMCP port $mcpPort (Cold-booting CPU Transformer)..." -ForegroundColor Yellow
+Write-Host " |-- Awaiting responsive socket hook on FastMCP port $mcpPort (Cold-booting CPU Transformer)..." -ForegroundColor Yellow
 
 while (-not $McpConnected -and $McpAttempt -le $McpMaxAttempts) {
   $socketCheck = Get-NetTCPConnection -LocalPort $mcpPort -State Listen -ErrorAction SilentlyContinue
   if ($socketCheck) {
     $McpConnected = $true
   } else {
-    Write-Host "  |-- [Attempt $McpAttempt/$McpMaxAttempts] FastMCP socket initializing. Retrying in 5s..." -ForegroundColor Yellow
+    Write-Host " |-- [Attempt $McpAttempt/$McpMaxAttempts] FastMCP socket initializing. Retrying in 5s..." -ForegroundColor Yellow
     Start-Sleep -Seconds 5
     $McpAttempt++
   }

@@ -52,12 +52,16 @@ $configContent = Get-Content -Path $mcpConfigPath -Raw
 
 $qdrantPort = 8093
 if ($configContent -match 'qdrant_rest_port:\s*(\d+)') {
-  $qdrantPort = [int]$Matches[1]
+  if ($null -ne $Matches -and $Matches.Count -ge 2) {
+    $qdrantPort = [int]$Matches[1]
+  }
 }
 
 $qdrantApiKey = 'dev-srv-key-default'
 if ($configContent -match 'qdrant-srv:[\s\S]*?api_key:\s*[''"]?([^\''"\s\n]*)[''"]?') {
-  $qdrantApiKey = $Matches[1].Trim()
+  if ($null -ne $Matches -and $Matches.Count -ge 2) {
+    $qdrantApiKey = $Matches[1].Trim()
+  }
 }
 
 $HealthEndpoint = "http://127.0.0.1:$qdrantPort/readyz"
