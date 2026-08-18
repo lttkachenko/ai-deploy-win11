@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com).
 
+### [Development Snapshot] - DOS-13 (2026-08-18)
+
+### Added
+- (DOS-13) - Designed a unified Object-Oriented paradigm for the vector indexer layer by splitting contracts into `IStoreServiceBase` and `IStoreService`, introducing abstract factories (`StoreFactoryBase`, `StoreFactory`) to cleanly segregate light server search pipelines from heavy file-system watchers.
+- (DOS-13) - Engineered the `MCPServerGateway` managing class to completely encapsulate both FastAPI and FastMCP runtimes, migrating the entire server architecture to modern object state parameters (`self`) and completely eliminating anti-pattern global tracking states (`global`).
+- (DOS-13) - Integrated the modern `HTTPStreamable` transport protocol via explicit FastAPI mounting (`app.mount("/mcp", mcp.asgi())`), successfully exposing a native high-performance streaming layer alongside standard HTTP configurations.
+- (DOS-13) - Implemented a resilient, case-insensitive string normalization pipeline inside `libs/config_utils.py` driven by `.strip().lower()` and explicit quote purges (`.replace('"', "")`) to prevent silent config lookup failures caused by escaped Windows SCM and NSSM parameters.
+
+### Modified
+- (DOS-13) - Refactored the core transaction engine inside `MCPService.py` to recursively sort and compile vector shards strictly by their absolute `chunk_id` sequence, successfully recreating unbroken markdown files from raw database points.
+- (DOS-13) - Re-engineered the initialization pipelines in `StoreServiceQdrantBase` by moving configuration logic into a protected, polymorphic `_parse_config` method, allowing child classes to seamlessly inherit and extend database properties via clean `super()` chains.
+- (DOS-13) - Modernized the asset synchronization routine inside `mcp_deploy.ps1` by switching to recursive, forced directory synchronization (`Copy-Item -Recurse -Force`) to perfectly replicate the new nested `libs/store` and `libs/mcp` structure into the target runtime.
+- (DOS-13) - Upgraded the precompilation engine in `Precompile-MCPAssets.ps1` to invoke the native Python `compileall` module recursively, completely eliminating manual file loops and securing bytecode coverage for all inner packages.
+- (DOS-13) - Standardized the runtime path routing engine inside `libs/config_utils.py` to extract configuration matrices relative to the isolated active working directory (`os.getcwd()`), cleanly preventing environment race conditions during multi-daemon parallel boots.
+
+### Fixed
+- (DOS-13) - Eliminated a persistent `ValueError` crash inside the NSSM runtime by fixing a multi-scope variable casing bug (`$venvPython` vs `$VenvPython`) and forcing an early `Set-Location` directive inside the isolated PowerShell session command block.
+- (DOS-13) - Resolved an immediate runtime initialization drop inside `mcp_watcher.py` by restoring the standard top-level Python main execution block (`if __name__ == '__main__'`) and safeguarding it with explicit `asyncio.run()` error handling.
+- (DOS-13) - Fixed a critical Python `TypeError` inside `libs/config_utils.py` caused by illegal list-to-hash indexing during debug fallbacks by standardizing dictionary key retrieval on precise index limits (`[0]`).
+- (DOS-13) - Rectified a permanent connection timeout inside `_await_store` by integrating an automated URL parser (`urlparse`) to strip application scheme prefixes (`http://`) and isolate clean host coordinates prior to low-level socket binding.
+- (DOS-13) - Eradicated code smells and SonarLint compilation warnings inside `_check_network_socket` by replacing empty context blocks and lazy `pass` operators with deterministic `.close()` socket release events.
+- (DOS-13) - Resolved a critical Python `NameError` inside `IMCPService.py` by introducing clean type annotations (`Optional`, `List`) into the header of the interface file.
+
+### Deprecated / Removed
+- (DOS-13) - **Deprecated**: The monolithic procedural script `libs.py` has been completely deprecated and broken down into isolated, single-responsibility OOP modules.
+- (DOS-13) - **Removed**: Eradicated the deprecated procedural API gateway `mcp_api.py`, fully migrating its structural compilation logic and transaction flows into the `MCPService` class methods.
+- (DOS-13) - **Removed**: Eliminated volatile OS-level user environment variables from the deployment lifecycle to completely protect concurrent daemon processes from cross-process memory leaks and race conditions.
+- (DOS-13) - **Removed**: Stripped out loose, unbuffered global print statements across all files, substituting them with strict, atomic `flush=True` logs to guarantee instant disk output under Windows LocalSystem restrictions.
+
+
 ### [Development Snapshot] - DOS-12 (2026-08-02)
 
 ### Added
@@ -31,19 +61,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 ## [Development Snapshot] - DOS-11 (2026-07-31)
 
 ### Added
-- (DOS-11) - Implemented a high-performance, asynchronous background workspace hydration scan loop inside `qdrant_watcher.py` using native `os.walk` streams to completely index legacy markdown assets on startup boundary before initiating the `watchfiles` event loop.
+- (DOS-11) - Implemented a high-performance, asynchronous background workspace hydration scan loop inside `mcp_watcher.py` using native `os.walk` streams to completely index legacy markdown assets on startup boundary before initiating the `watchfiles` event loop.
 - (DOS-11) - Integrated an automated pre-flight environment discovery and directory scavenging block into `qdrant_deploy.ps1` to migrate `qdrant_healthz.ps1` into the centralized production runtime binaries directory (`~/.ai/bin/`).
 - (DOS-11) - Introduced explicit, flexible path mapping capabilities inside `aider_run.sh` by provisioning the `-c` / `--config` CLI switch to natively intercept, override, and pass custom execution configuration slots.
 - (DOS-11) - Scaffolded a dedicated, isolated runtime telemetry collection boundary at `~/.aider/log/` backed by a native bash `tee` output redirection sequence inside `aider_run.sh` to capture unified stdout and stderr logs.
 
 ### Modified
-- (DOS-11) - Refactored the core configuration parsing logic inside `qdrant_watcher.py` from fragile regex pattern filters to a low-complexity dictionary stream tokenizer (`Cognitive Complexity < 5`), ensuring stable token extraction for indented `db` and `vault` YAML mappings.
+- (DOS-11) - Refactored the core configuration parsing logic inside `mcp_watcher.py` from fragile regex pattern filters to a low-complexity dictionary stream tokenizer (`Cognitive Complexity < 5`), ensuring stable token extraction for indented `db` and `vault` YAML mappings.
 - (DOS-11) - Migrated the filesystem RAG tracking engine inside `mcp_deploy.ps1` from an interactive Windows Scheduled Task wrapper to a headless, non-interactive Windows Service driven entirely by NSSM (`ai-rag-wtr`), suppressing workspace window pops.
 - (DOS-11) - Re-aligned the `Aider\aider_deploy.ps1` transport protocol to route the distribution deployment configuration template strictly into the unified internal profile runtime boundary location at `~/.aider/config.yml`.
 - (DOS-11) - Standardized the guest invocation wrapper inside `aider_run.sh` to forward absolute configuration file declarations directly via the native `--config` argument string, enforcing precise middleware endpoint resolution.
 
 ### Fixed
-- (DOS-11) - Resolved a crippling `TypeError: 'NoneType' object is not subscriptable` crash inside `qdrant_watcher.py` by engineering a guaranteed dictionary fallback object return outside the configuration file stream iterator.
+- (DOS-11) - Resolved a crippling `TypeError: 'NoneType' object is not subscriptable` crash inside `mcp_watcher.py` by engineering a guaranteed dictionary fallback object return outside the configuration file stream iterator.
 - (DOS-11) - Eradicated a severe SonarQube syntax code quality alert (`python:S5857`) inside character classes by replacing duplicated, over-escaped quotation literals with safe, compliant stream token processing.
 - (DOS-11) - Corrected a fatal type-mismatch error inside `libs.py` (`Unsupported points selector type: <class 'dict'>`) by migrating raw dictionary query arrays into strictly-typed `FilterSelector`, `Filter`, `FieldCondition`, and `MatchValue` object models.
 - (DOS-11) - Mitigated an immediate `CommandNotFoundException` failure during Step 6 of `aider_deploy.ps1` by cross-compiling windows paths through the native `wsl -e wslpath` wrapper utility boundary.
@@ -62,23 +92,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-10) - Established a secure, dedicated port space routing matrix entirely shifted to non-standard high-range blocks (`8090`–`8095`), completely purging collision risks with future node and Webpack development pipelines.
 - (DOS-10) - Integrated a high-performance, dynamic macro token discovery engine into `backend_deploy.ps1` utilizing explicit regex group filters to natively extract case-sensitive variables (`SW_HOST`, `SW_PORT`) from configuration matrices.
 - (DOS-10) - Enforced a strict cryptographic identity validation mechanism inside `libs.py` by implementing a stable `hashlib.sha256` digest mapping protocol to yield deterministic, immutable uint64 `point_id` markers across daemon restarts.
-- (DOS-10) - Introduced a strict security perimeter authorization layer inside `qdrant_mcp.py` requiring explicit `client_key` query payload validation to pass incoming FastMCP tool invocation requests.
+- (DOS-10) - Introduced a strict security perimeter authorization layer inside `mcp_server.py` requiring explicit `client_key` query payload validation to pass incoming FastMCP tool invocation requests.
 - (DOS-10) - Implemented a cyclic pre-flight validation barrier loop inside `mcp_deploy.ps1` targeting port `8095` to gracefully absorb cold-boot thread block latencies caused by heavy CPU matrix computations during `SentenceTransformer` initialization.
 
 ### Modified
 - (DOS-10) - Refactored `backend_deploy.ps1` to cleanly pass precise, flattened infrastructure constraints (`--listen "${detectedHost}:${detectedPort}"`) down to the NSSM installation command boundary, eliminating nested quotation collapse failures in the Win32 registry.
 - (DOS-10) - Shifted the underlying inference execution sequence from abstract multi-port mapping arrays to a unified sequential workflow on a single target port (`8090`), leveraging the native `mostlygeek/llama-swap` spec under strict `concurrency: 1` limits.
 - (DOS-10) - Standardized the centralized variable injection topology across all core data-parsing layouts to strictly utilize standard dollar-brace tokens (`${macro}`), deprecating incompatible abstract bracket formats.
-- (DOS-10) - Translated all code comment structures and logging signals inside `libs.py`, `qdrant_mcp.py`, and `qdrant_watcher.py` into a unified, enterprise-grade English vocabulary layout to comply with automated security code quality audits.
+- (DOS-10) - Translated all code comment structures and logging signals inside `libs.py`, `mcp_server.py`, and `mcp_watcher.py` into a unified, enterprise-grade English vocabulary layout to comply with automated security code quality audits.
 
 ### Fixed
 - (DOS-10) - Resolved a catastrophic, random vector replication loop inside `libs.py` by deprecating python's native, process-seeded `hash()` function, replacing it with case-immutable deterministic hash generation algorithms.
-- (DOS-10) - Purged a crippling syntax error inside `qdrant_mcp.py` caused by a misplaced PowerShell negation keyword (`if -not`) in the file validation sequence, restoring pure Python compliance standards.
+- (DOS-10) - Purged a crippling syntax error inside `mcp_server.py` caused by a misplaced PowerShell negation keyword (`if -not`) in the file validation sequence, restoring pure Python compliance standards.
 - (DOS-10) - Corrected an invalid network routing loop inside `qdrant_deploy.ps1` by shifting the pre-flight check endpoint to the officially documented Qdrant path `/readyz`, preventing immediate `404 Not Found` deployment failures.
 - (DOS-10) - Mitigated a severe runtime directory drifting bug inside `pyparts_deploy.ps1` by swapping single-character string trimmers with an absolute, non-destructive regex path normalization pattern that preserves Unix-style dot definitions (`.ai/`).
 - (DOS-10) - Cleared an immediate `ModuleNotFoundError` inside host service containers by hard-coding explicit sys-path modifications (`sys.path.insert`) to force the `LocalSystem` engine to look up internal modules inside the exact execution directory.
 - (DOS-10) - Eradicated a fatal `Null` execution command crash at step 5.3 of the backend deployment script by aligning raw output pipeline redirections with the native PowerShell `Out-Null` cmdlet signature.
-- (DOS-10) - Resolved a severe file parsing drift inside `qdrant_watcher.py` by completely expunging copy-paste function duplicates, routing all markdown processing pipelines strictly through the verified `libs.index_file` coordinate.
+- (DOS-10) - Resolved a severe file parsing drift inside `mcp_watcher.py` by completely expunging copy-paste function duplicates, routing all markdown processing pipelines strictly through the verified `libs.index_file` coordinate.
 
 ### Known Issues
 - **Hugging Face Rate Limiting Blocks**: Initializing cold boots of the shared CPU transformation pipeline from unauthenticated terminal instances triggers frequent `huggingface_hub` connection delay cycles. Production environments should explicitly provision an absolute `HF_TOKEN` macro value inside the NSSM wrapper extra environment space to ensure high-priority rate limits [DOS-7].
@@ -147,7 +177,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-7) - Integrated `llama-swap` Go-backed proxy gateway on the host to manage the lazy execution loop lifecycle of native C++ `llama-server` instances.
 - (DOS-7) - Implemented strict 6GB VRAM allocation caps and sequential request throttling (`concurrency: 1`) via a centralized `llama-swap.conf.yml` layout.
 - (DOS-7) - Replicated LiteLLM prompt template anchors by natively injecting the multi-layer spec prompt (`[MARKER HYDRATE]` and `IDENTITY HYDRATION` policy) into `llama-server` via the `--system-prompt-file` argument.
-- (DOS-7) - Migrated the containerized FastMCP server (`qdrant_mcp.py`) directly to the host network boundary as a persistent background Windows service using the `NSSM` wrapper.
+- (DOS-7) - Migrated the containerized FastMCP server (`mcp_server.py`) directly to the host network boundary as a persistent background Windows service using the `NSSM` wrapper.
 - (DOS-7) - Swapped out stdout transport protocols inside the FastMCP server for a unified network-accessible `SSE HTTP` web server structure listening on port 8000.
 
 ### Modified
@@ -158,7 +188,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-7) - Re-engineered `network_setup.ps1` to handle severe Hyper-V zero-address binding bugs by mapping precise cross-boundary `netsh interface portproxy` tunnels from the WSL vEthernet gateway IP to `1234`, `8000`, and `6333` ports on loopback.
 
 ### Fixed
-- (DOS-7) - Secured the `qdrant_watcher.py` file mapping logic by forcing index arrays to index `[0]` inside `os.path.splitext`, preventing runtime task drops on dot-nested file tags.
+- (DOS-7) - Secured the `mcp_watcher.py` file mapping logic by forcing index arrays to index `[0]` inside `os.path.splitext`, preventing runtime task drops on dot-nested file tags.
 - (DOS-7) - Eliminated duplicate vector node allocations inside `libs.py` by removing the unstable `time.time()` string slice from the `point_id` hash algorithm.
 - (DOS-7) - Resolved critical Python async consistency block errors by wrapping the heavy synchronous `.encode()` method inside `asyncio.to_thread()`, moving CPU tensor generation entirely off the main event loop thread.
 - (DOS-7) - Fixed I/O blocking blocks inside `libs.py` by wrapping standard synchronous `open()` and recursive transclusion file reads inside an isolated `asyncio.to_thread()` pipeline.
@@ -169,15 +199,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 ## [Development Snapshot] - DOS-6 (2026-07-17)
 
 ### Added
-- (DOS-6) - Overhauled the entire RAG pipeline python layer (`libs.py`, `qdrant_watcher.py`, `qdrant_mcp.py`) to fully asynchronous execution topology using `asyncio` and `httpx`.
-- (DOS-6) - Swapped out legacy synchronous `watchdog` file system auditor for high-performance, Rust-backed `watchfiles` runtime loop inside `qdrant_watcher.py`.
+- (DOS-6) - Overhauled the entire RAG pipeline python layer (`libs.py`, `mcp_watcher.py`, `mcp_server.py`) to fully asynchronous execution topology using `asyncio` and `httpx`.
+- (DOS-6) - Swapped out legacy synchronous `watchdog` file system auditor for high-performance, Rust-backed `watchfiles` runtime loop inside `mcp_watcher.py`.
 - (DOS-6) - Unified the embedding generation engine by implementing a dynamic factory method (`get_embedding`) inside `libs.py`, abstracting format schemas for both Ollama (`/api/embed`) and OpenAI/LM-Studio (`/v1/embeddings`) endpoints.
 - (DOS-6) - Hardcoded idempotent global resource constraint checks into `infra_deploy.ps1` utilizing SHA256 file hashing to safely deploy strict memory (`16GB`) and CPU boundaries via `.wslconfig` prior to launching Docker networks.
 - (DOS-6) - Refactored `models_deploy.ps1` into an adaptive IaC factory module with headless bootstrap integration for the advanced `llmster` background daemon and native multi-threaded `lms` CLI toolchain down to local machines.
 
 ### Modified
-- (DOS-6) - Migrated the low-level `qdrant_mcp.py` transport layer from high-level `FastMCP` decorators to official `mcp.server` primitives to natively handle concurrent client requests without clogging the loop.
-- (DOS-6) - Standardized the entire distribution repository file structure to a strict object-oriented `subject_action` naming convention (e.g., `asset_download.ps1`, `qdrant_watcher.py`).
+- (DOS-6) - Migrated the low-level `mcp_server.py` transport layer from high-level `FastMCP` decorators to official `mcp.server` primitives to natively handle concurrent client requests without clogging the loop.
+- (DOS-6) - Standardized the entire distribution repository file structure to a strict object-oriented `subject_action` naming convention (e.g., `asset_download.ps1`, `mcp_watcher.py`).
 - (DOS-6) - Locked down all foundational pip packages inside `pyparts_deploy.ps1` to explicit enterprise version definitions (`watchfiles==0.24.0`, `httpx==0.27.0`, `mcp==1.2.1`) preventing runtime configuration drift across mid-level developer rigs.
 
 ### Fixed
@@ -191,11 +221,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 - (DOS-2) - Implemented a multi-zone RAG data architecture featuring strict context isolation between engineering and hobby knowledge bases.
-- (DOS-2) - Created dual-watcher background daemon loops using independent `qdrant_watcher.py` instances to index separate host folders concurrently.
+- (DOS-2) - Created dual-watcher background daemon loops using independent `mcp_watcher.py` instances to index separate host folders concurrently.
 - (DOS-2) - Formulated isolated shortcode naming parameters to prevent context leakage across general LLM instances and targeted coding models.
 
 ### Fixed
-- (DOS-2) - Resolved a critical HTTP 404 crash inside `qdrant_watcher.py` by mapping the target Ollama payload explicitly to the updated `/api/embed` endpoint.
+- (DOS-2) - Resolved a critical HTTP 404 crash inside `mcp_watcher.py` by mapping the target Ollama payload explicitly to the updated `/api/embed` endpoint.
 - (DOS-2) - Fixed vector parsing exceptions by re-engineering the response interpreter to extract structured arrays from the modern `embeddings` JSON key.
 
 ---
@@ -203,7 +233,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 ## [Development Snapshot] - 2026-07-07
 
 ### Added
-- (DOS-1) - Integrated FastMCP python framework bindings inside WSL (`qdrant_mcp.py`) to expose real-time context injections to the Aider runtime agent via stdio transport channels.
+- (DOS-1) - Integrated FastMCP python framework bindings inside WSL (`mcp_server.py`) to expose real-time context injections to the Aider runtime agent via stdio transport channels.
 - (DOS-1) - Added automated background persistence triggers for file-watchers by nesting execution commands inside the Windows Task Scheduler, bypassing local service permission blocks.
 - (DOS-1) - Introduced automated model dependency evaluations using direct regex parsing maps against local YAML shortcode matrix configurations.
 

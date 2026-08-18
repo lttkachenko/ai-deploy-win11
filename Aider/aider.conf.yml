@@ -1,6 +1,7 @@
 # -----------------------------------------------------------------
-# Declarative FastMCP Network SSE Server Integration
+# Declarative FastMCP Network HTTPStreamable Server Integration
 # -----------------------------------------------------------------
 mcp-servers:
   qdrant-rag:
-    url: "http://win-host:8095/sse"
+    type: "http"
+    url: "http://win-host:8096/mcp"

@@ -18,4 +18,4 @@
 
 ## 5. INFRASTRUCTURE REPOSITORY HYGIENE & INDEPENDENCE
 - **Insight**: Mixed script naming topologies lower workspace scannability, and relying on heavy Electron-based GUIs for AI inference limits automation scaling across mid-level developer rigs.
-- **Architectural Rule**: All provisioning files must adhere strictly to the object-oriented `subject_action` naming convention (e.g., `asset_download.ps1`, `qdrant_watcher.py`). Deployment scripts must target polymorphic, headless engine installations, leveraging the multi-threaded `llmster`/`lms` CLI toolchain to bootstrap servers, download `.gguf` weight packages, and load layers via cold console execution lanes.
+- **Architectural Rule**: All provisioning files must adhere strictly to the object-oriented `subject_action` naming convention (e.g., `asset_download.ps1`, `mcp_watcher.py`). Deployment scripts must target polymorphic, headless engine installations, leveraging the multi-threaded `llmster`/`lms` CLI toolchain to bootstrap servers, download `.gguf` weight packages, and load layers via cold console execution lanes.
