@@ -14,6 +14,7 @@ from libs.store import StoreType
 from .IMCPGateway import IMCPGateway
 from .MCPService import MCPService
 from .MCPAuthMiddleware import MCPAuthMiddleware
+from .MCPNativeController import MCPNativeController
 
 
 @asynccontextmanager
@@ -38,54 +39,17 @@ class MCPGateway(IMCPGateway):
     self.app = FastAPI(title = "Explicit Production Gateway", lifespan = gateway_lifespan)
     self.app.state.gateway = self
 
-    # Декларативный контроллер, который хавает POST на /mcp от твоего форка
-    @self.app.post("/mcp")
-    @self.app.post("/mcp/")
-    async def mcp_native_handler(request: Request):
-      try:
-        body_bytes = await request.body()
-        if not body_bytes:
-          return JSONResponse(status_code = 200, content = {})
+    # ИНИЦИАЛИЗИРУЕМ ВЫДЕЛЕННЫЙ ДЕКЛАРАТИВНЫЙ КОНТРОЛЛЕР РОУТОВ
+    self.mcp_controller = MCPNativeController(
+      app = self.app,
+      mcp = self.mcp,
+      mcp_service = self.mcp_service
+    )
 
-        payload = json.loads(body_bytes.decode("utf-8"))
-        request_id = payload.get("id")
-
-        if payload.get("method") == "initialize":
-          return JSONResponse(
-            status_code = 200,
-            content = {
-              "jsonrpc": "2.0",
-              "id": request_id,
-              "result": {
-                "protocolVersion": "2026-07-28",
-                "capabilities": {
-                  "resources": {},
-                  "prompts": {}
-                },
-                "serverInfo": {
-                  "name": "Obsidian-Vector-Resource-Gateway",
-                  "version": "1.0.0"
-                }
-              }
-            }
-          )
-
-        if hasattr(self.mcp, "_server") and hasattr(self.mcp._server, "handle_request"):
-          mcp_response = await self.mcp._server.handle_request(payload)
-          return JSONResponse(status_code = 200, content = mcp_response)
-
-        return JSONResponse(
-          status_code = 200,
-          content = {"jsonrpc": "2.0", "id": request_id, "result": {}}
-        )
-
-      except Exception as e:
-        print(f"[MCP-ERR] Error processing native RPC transaction: {str(e)}", flush=True)
-        return JSONResponse(status_code = 500, content = {"detail": "Internal server error"})
-
+    # Регистрируем оставшиеся инфраструктурные слои
+    self._register_http_routes()
     self._register_mcp_routes()
     self._setup_security()
-    self._register_http_routes()
 
   # ==========================================
   # РЕАЛИЗАЦИЯ МЕТОДОВ ИНТЕРФЕЙСА IMCPGateway
@@ -178,6 +142,7 @@ class MCPGateway(IMCPGateway):
       allow_credentials = True,
       allow_methods = ["*"],
       allow_headers = ["*"],
+      expose_headers = ["mcp-protocol-version", "X-MCP-Protocol-Version"]
     )
 
   def _register_http_routes(self) -> None:

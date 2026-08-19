@@ -1,4 +1,4 @@
-# /MCP/libs/mcp/IMCPServerGateway.py
+# /MCP/libs/mcp/IMCPGateway.py
 from abc import ABC, abstractmethod
 from fastapi.responses import JSONResponse
 

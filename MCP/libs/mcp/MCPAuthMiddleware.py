@@ -1,4 +1,4 @@
-# /MCP/libs/mcp/EnterpriseAuthMiddleware.py
+# /MCP/libs/mcp/MCPAuthMiddleware.py
 import json
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -13,9 +13,7 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
     self.target_token = target_token
 
   async def dispatch(self, request: Request, call_next):
-    if request.url.path == "/mcp":
-      request.scope["path"] = "/mcp/"
-
+    # УБРАЛИ ХАК СО СЛЭШЕМ, ЧТОБЫ НЕ ЛОМАТЬ СЕТЕВОЙ СТЕК STARLETTE
     if request.url.path in ["/healthz", "/healthz/"]:
       return await call_next(request)
 
