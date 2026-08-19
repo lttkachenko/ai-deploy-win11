@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastmcp import FastMCP
 
@@ -38,89 +38,44 @@ class MCPGateway(IMCPGateway):
     self.app = FastAPI(title = "Explicit Production Gateway", lifespan = gateway_lifespan)
     self.app.state.gateway = self
 
-    # Декларативный контроллер, который хавает POST на /mcp от твоего форка
-    @self.app.post("/mcp")
-    @self.app.post("/mcp/")
-    async def mcp_native_handler(request: Request):
-      try:
-        body_bytes = await request.body()
-        if not body_bytes:
-          return JSONResponse(status_code = 200, content = {})
-
-        payload = json.loads(body_bytes.decode("utf-8"))
-        request_id = payload.get("id")
-
-        if payload.get("method") == "initialize":
-          return JSONResponse(
-            status_code = 200,
-            content = {
-              "jsonrpc": "2.0",
-              "id": request_id,
-              "result": {
-                "protocolVersion": "2026-07-28",
-                "capabilities": {
-                  "resources": {},
-                  "prompts": {}
-                },
-                "serverInfo": {
-                  "name": "Obsidian-Vector-Resource-Gateway",
-                  "version": "1.0.0"
-                }
-              }
-            }
-          )
-
-        if hasattr(self.mcp, "_server") and hasattr(self.mcp._server, "handle_request"):
-          mcp_response = await self.mcp._server.handle_request(payload)
-          return JSONResponse(status_code = 200, content = mcp_response)
-
-        return JSONResponse(
-          status_code = 200,
-          content = {"jsonrpc": "2.0", "id": request_id, "result": {}}
-        )
-
-      except Exception as e:
-        print(f"[MCP-ERR] Error processing native RPC transaction: {str(e)}", flush=True)
-        return JSONResponse(status_code = 500, content = {"detail": "Internal server error"})
-
+    # Регистрируем инфраструктурные слои
+    self._register_http_routes()
     self._register_mcp_routes()
     self._setup_security()
-    self._register_http_routes()
 
   # ==========================================
   # РЕАЛИЗАЦИЯ МЕТОДОВ ИНТЕРФЕЙСА IMCPGateway
   # ==========================================
 
   async def on_startup(self) -> None:
-    print("[INIT] Securing connector session to vector store cluster...", flush=True)
+    print("[INIT] Securing connector session to vector store cluster...", flush = True)
     await self.mcp_service.initialize()
-    if hasattr(self.mcp, "_server") and hasattr(self.mcp._server, "startup"):
-      await self.mcp._server.startup()
+
+    # Принудительно будим обработчики ядра FastMCP на старте
+    if hasattr(self.mcp, "_setup_handlers"):
+      self.mcp._setup_handlers()
+    elif hasattr(self.mcp, "_setup_task_protocol_handlers"):
+      self.mcp._setup_task_protocol_handlers()
 
   async def on_shutdown(self) -> None:
-    print("[SHUTDOWN] Breaking active database connection handles...", flush=True)
+    print("[SHUTDOWN] Breaking active database connection handles...", flush = True)
     if self.mcp_service and self.mcp_service._store_client:
       await self.mcp_service._store_client.close()
-    if hasattr(self.mcp, "_server") and hasattr(self.mcp._server, "shutdown"):
-      await self.mcp._server.shutdown()
 
   async def health_check(self) -> JSONResponse:
     """HTTP GET endpoint for infrastructure health verification."""
     result = {"status": "healthy", "qdrant": {"connected": False, "details": "Uninitialized"}}
-
     if self.mcp_service and self.mcp_service._store_client and self.mcp_service._store_client.client:
       try:
         await self.mcp_service._store_client.client.get_collections()
         result["qdrant"]["connected"] = True
         result["qdrant"]["details"] = "Connected and responsive"
-
         prompt_content = await self.mcp_service.handle_uri_transaction("obsidian://Prompts/system-prompt")
         if not prompt_content:
           result["status"] = "warning"
       except Exception as e:
         result["status"] = "error"
         result["qdrant"]["details"] = str(e)
-
     return JSONResponse(content = result)
 
   # ==========================================
@@ -137,51 +92,118 @@ class MCPGateway(IMCPGateway):
 
   def start(self) -> None:
     """Launches the uvicorn ASGI server hosting the HTTPStreamable transport."""
-    print(f"[UVICORN] Launching explicit HTTP gateway on {self.host_bind}:{self.fmcp_target_port}...", flush=True)
+    print(f"[UVICORN] Launching explicit HTTP gateway on {self.host_bind}:{self.fmcp_target_port}...", flush = True)
     sys.stdout.flush()
-
     uvicorn.run(self.app, host = self.host_bind, port = self.fmcp_target_port, log_level = "info")
 
   # ==========================================
   # ПРИВАТНЫЕ МЕТОДЫ И НАСТРОЙКА СЛОЕВ
   # ==========================================
 
+  def _register_http_routes(self) -> None:
+    self.app.add_api_route("/healthz", self.health_check, methods = ["GET"])
+
+    # СТАБИЛЬНЫЙ REST-РОУТ С ПОДДЕРЖКОЙ КЛАССИЧЕСКОЙ ВЕРСИИ ПРОТОКОЛА
+    @self.app.post("/mcp")
+    @self.app.post("/mcp/")
+    @self.app.post("/")
+    async def mcp_modern_stateless_gateway(request: Request):
+      body_bytes = await request.body()
+      payload = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+
+      method_call = payload.get("method")
+      request_id = payload.get("id", 0) if payload.get("id") is not None else 0
+
+      # 1. Перехватываем транспортный зонд и отдаем совместимую версию
+      if method_call == "server/discover":
+        response_dict = {
+          "jsonrpc": "2.0",
+          "id": request_id,
+          "result": {
+            "protocolVersions": ["2024-11-05"],
+            "serverInfo": {"name": "ai-dev-mcp-srv", "version": "1.0.0"}
+          }
+        }
+        return self._build_stateless_response(json.dumps(response_dict))
+
+      if method_call == "initialize":
+        response_dict = {
+          "jsonrpc": "2.0",
+          "id": request_id,
+          "result": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {
+              "resources": {"subscribe": True, "listChanged": True},
+              "prompts": {"listChanged": True},
+              "tools": {"listChanged": True}
+            },
+            "serverInfo": {"name": "ai-dev-mcp-srv", "version": "1.0.0"}
+          }
+        }
+        return self._build_stateless_response(json.dumps(response_dict))
+
+      # 2. Все остальные бизнес-вызовы (tools/list, prompts/list) шлем в ядро
+      core_server = getattr(self.mcp, "_mcp_server", getattr(self.mcp, "_server", None))
+      if core_server and hasattr(core_server, "handle_request"):
+        from mcp.types import JSONRPCMessage
+        try:
+          # Временно подменяем версию в метаданных запроса, чтобы ядро SDK mcp не ругалось
+          if "params" in payload and "_meta" in payload["params"]:
+            payload["params"]["_meta"]["io.modelcontextprotocol/protocolVersion"] = "2024-11-05"
+
+          message = JSONRPCMessage.model_validate(payload)
+          mcp_response = await core_server.handle_request(message)
+
+          if hasattr(mcp_response, "model_dump_json"):
+            res_content = mcp_response.model_dump_json()
+          elif hasattr(mcp_response, "json"):
+            res_content = mcp_response.json()
+          else:
+            res_content = json.dumps(mcp_response, ensure_ascii = False)
+
+          return self._build_stateless_response(res_content)
+        except Exception as err:
+          print(f"[MCP-CORE-ERR] Core transaction failed: {str(err)}", flush = True)
+
+      fallback_dict = {"jsonrpc": "2.0", "id": request_id, "result": {"protocolVersions": ["2024-11-05"]}}
+      return self._build_stateless_response(json.dumps(fallback_dict))
+
+  def _build_stateless_response(self, content: str) -> Response:
+    """Сборка HTTP-ответа с принудительными CORS-заголовками версии 2024-11-05."""
+    res = Response(status_code = 200, content = content)
+    res.headers["content-type"] = "application/json"
+    res.headers["mcp-protocol-version"] = "2024-11-05"
+    res.headers["x-mcp-protocol-version"] = "2024-11-05"
+    res.headers["X-MCP-Protocol-Version"] = "2024-11-05"
+    res.headers["Access-Control-Allow-Origin"] = "*"
+    res.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    res.headers["Access-Control-Allow-Headers"] = "*"
+    res.headers["Access-Control-Expose-Headers"] = "mcp-protocol-version, X-MCP-Protocol-Version, x-mcp-protocol-version"
+    return res
+
   def _parse_config(self, raw_config: Dict[str, Any]) -> None:
     if not raw_config:
       raise ValueError("[MCP-GATEWAY] Critical error: Server configuration matrix is null or empty.")
-
     target_port = raw_config.get("port") or raw_config.get("fmcp_port")
     if not target_port:
       raise ValueError("[MCP-GATEWAY] Critical error: Required parameter 'port' missing.")
     self.fmcp_target_port = int(target_port)
-
     raw_host = raw_config.get("host", "127.0.0.1")
-    if isinstance(raw_host, list):
-      raw_host = raw_host if raw_host else "127.0.0.1"
-
     clean_host_str = str(raw_host).replace("http://", "").replace("https://", "")
-
-    if ":" in clean_host_str:
-      self.host_bind = clean_host_str.split(":")
-    else:
-      self.host_bind = clean_host_str
-
-    print(f"[MCP-GATEWAY] Configuration validated. Service port bound to: {self.fmcp_target_port} on host: {self.host_bind}", flush=True)
+    self.host_bind = clean_host_str.split(":") if ":" in clean_host_str else clean_host_str
+    print(f"[MCP-GATEWAY] Configuration validated. Service port bound to: {self.fmcp_target_port} on host: {self.host_bind}", flush = True)
 
   def _setup_security(self) -> None:
     token = self.runtime_env.get("api_key", "ai-dev-mcp-srv-key-default")
     self.app.add_middleware(MCPAuthMiddleware, target_token = token)
-
     self.app.add_middleware(
       CORSMiddleware,
       allow_origins = ["*"],
       allow_credentials = True,
       allow_methods = ["*"],
       allow_headers = ["*"],
+      expose_headers = ["mcp-protocol-version", "X-MCP-Protocol-Version"]
     )
-
-  def _register_http_routes(self) -> None:
-    self.app.add_api_route("/healthz", self.health_check, methods = ["GET"])
 
   def _register_mcp_routes(self) -> None:
     service = self.mcp_service

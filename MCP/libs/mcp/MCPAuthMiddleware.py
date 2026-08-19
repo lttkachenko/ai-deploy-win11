@@ -13,13 +13,13 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
     self.target_token = target_token
 
   async def dispatch(self, request: Request, call_next):
-    if request.url.path == "/mcp":
-      request.scope["path"] = "/mcp/"
+    if request.url.path.startswith("/mcp"):
+      return await call_next(request)
 
     if request.url.path in ["/healthz", "/healthz/"]:
       return await call_next(request)
 
-    if request.url.path in ["/mcp", "/mcp/"]:
+    if request.url.path in ["/", "/mcp", "/mcp/"]:
       return await call_next(request)
 
     if request.method == "OPTIONS":
