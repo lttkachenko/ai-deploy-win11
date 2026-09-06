@@ -1,15 +1,14 @@
 # .\orchestrator.ps1 - Master AI Infrastructure Bootstrap Pipeline
-# Style Enforced: Spaces 2, LF, DoubleQuotes, Strict Quality Control
 
 $ErrorActionPreference = "Stop"
 
 # 1. Pipeline Environment Discovery
-$winUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.Split('\')[-1]
+$winUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.Split("\")[-1]
 $homeDir = [System.Environment]::GetFolderPath("UserProfile")
 $aiRoot = Join-Path $homeDir ".ai"
 
 Write-Host "=================================================================" -ForegroundColor Magenta
-Write-Host ">>> Spawning Headless Backend & Qdrant Orchestration Pipeline..." -ForegroundColor Magenta
+Write-Host ">>> Spawning Headless Backend & Vector Store Orchestration Pipeline..." -ForegroundColor Magenta
 Write-Host ">>> Target Host: Windows ($winUser) | Runtime Workspace: $aiRoot" -ForegroundColor Magenta
 Write-Host "=================================================================" -ForegroundColor Magenta
 
@@ -18,11 +17,12 @@ $lmsScript      = Join-Path $PSScriptRoot "Backend\backend_deploy.ps1"
 $pypartsScript  = Join-Path $PSScriptRoot "pyparts_deploy.ps1"
 $networkScript  = Join-Path $PSScriptRoot "network_setup.ps1"
 $modelsScript   = Join-Path $PSScriptRoot "models_deploy.ps1"
-$qdrantScript   = Join-Path $PSScriptRoot "Qdrant\qdrant_deploy.ps1"
+$storeScript    = Join-Path $PSScriptRoot "Store\qdrant_deploy.ps1" # Renamed folder & variable
+$mcpScript      = Join-Path $PSScriptRoot "MCP\mcp_deploy.ps1"      # New MCP phase entry point
 $aiderScript    = Join-Path $PSScriptRoot "Aider\aider_deploy.ps1"
 
 # Verification loop for modular architectural nodes
-$requiredScripts = @($lmsScript, $pypartsScript, $networkScript, $modelsScript, $qdrantScript, $aiderScript)
+$requiredScripts = @($lmsScript, $pypartsScript, $networkScript, $modelsScript, $storeScript, $mcpScript, $aiderScript)
 foreach ($script in $requiredScripts) {
   if (-not (Test-Path $script)) {
     throw "[FATAL] Modular architecture violation. Missing orchestration node: $script"
@@ -45,6 +45,31 @@ foreach ($dir in $infrastructureDirs) {
     New-Item -ItemType Directory -Path $targetPath | Out-Null
     Write-Host " |-- Scaffolded infrastructure node: .ai\$dir" -ForegroundColor Cyan
   }
+}
+
+# Inject Master Binary Path into User Environment Registry & Active Session
+$aiBinPath = Join-Path $aiRoot "bin"
+$userPathRegistry = [System.Environment]::GetEnvironmentVariable("PATH", [System.EnvironmentVariableTarget]::User)
+$pathElementsArray = $userPathRegistry -split ";"
+
+if ($pathElementsArray -notcontains $aiBinPath) {
+  $updatedUserPath = "$userPathRegistry;$aiBinPath".Trim(";")
+  [System.Environment]::SetEnvironmentVariable("PATH", $updatedUserPath, [System.EnvironmentVariableTarget]::User)
+  $env:PATH = "$env:PATH;$aiBinPath"
+  Write-Host " |-- Registered architecture binary path in User Environment and active session" -ForegroundColor Green
+} else {
+  if ($env:PATH -notlike "*$aiBinPath*") {
+    $env:PATH = "$env:PATH;$aiBinPath"
+  }
+  Write-Host " |-- Architecture binary path validation: Verified" -ForegroundColor Gray
+}
+
+$swapSetterScript = Join-Path $PSScriptRoot "Utils\swap_setter.ps1"
+if (Test-Path $swapSetterScript) {
+  Write-Host "`n[PHASE 1.5] Setting system swap size to encrease memory utilization limits..." -ForegroundColor Yellow
+  & $swapSetterScript
+} else {
+  Write-Host "[WARN] Utils\swap_setter.ps1 not found, skipping swap configuration." -ForegroundColor DarkYellow
 }
 
 # Unified resource matrix compilation under .ai/context path
@@ -97,18 +122,23 @@ Write-Host "`n[PHASE 3] Establishing Cross-Boundary Network Bridges..." -Foregro
 Write-Host "`n[PHASE 4] Deploying LLM Models defined in Backend Configs..." -ForegroundColor Yellow
 & $modelsScript
 
-# 8. Phase 5: Vector Engine Node Deployment
-Write-Host "`n[PHASE 5] Launching Distributed Qdrant Vector Engine Nodes..." -ForegroundColor Yellow
-& $qdrantScript
+# 8. Phase 5: Vector Store (Qdrant)  Deployment
+Write-Host "`n[PHASE 5] Launching Distributed Vector Store Engine Nodes..." -ForegroundColor Yellow
+& $storeScript
 
-# 9. Phase 6: Guest Runtime Synchronization
-Write-Host "`n[PHASE 6] Bootstrapping Aider Environment Inside WSL Guest Subsystem..." -ForegroundColor Yellow
+# 9. Phase 6: MCP Stack Deployment (Watcher, Server, API Configs)
+Write-Host "`n[PHASE 6] Deploying MCP Context Stack..." -ForegroundColor Yellow
+& $mcpScript
+
+# 10. Phase 7: Guest AI Client Runtime Drployment (Aider)
+Write-Host "`n[PHASE 7] Bootstrapping Aider Environment Inside WSL Guest Subsystem..." -ForegroundColor Yellow
 & $aiderScript
 
-# 10. Pipeline Telemetry Check Verification
+# 11. Pipeline Telemetry Check Verification
 Write-Host "`n=================================================================" -ForegroundColor Green
 Write-Host "[SUCCESS] Enterprise Headless AI Stack Is Operational And Active!" -ForegroundColor Green
 Write-Host " |-- LM Studio API Gateway: http://127.0.0.1:1234" -ForegroundColor Green
-Write-Host " |-- Qdrant Vector Engine:  http://127.0.0.1:6333" -ForegroundColor Green
+Write-Host " |-- Vector Store Engine:   http://127.0.0.1:6333" -ForegroundColor Green
+Write-Host " |-- MCP Context Server:    Active via SSE HTTP" -ForegroundColor Green
 Write-Host " |-- Aider Orchestration:   Active via WSL & FastMCP" -ForegroundColor Green
 Write-Host "=================================================================" -ForegroundColor Green

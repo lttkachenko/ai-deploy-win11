@@ -73,7 +73,7 @@ $wslRunPath = (wsl -e wslpath $localRunScript).Trim()
 Write-Host '>>> Enforcing vector isolation and sanitizing guest environment...' -ForegroundColor Yellow
 
 # Pure house-cleaning sequence: eradicate flat dumps, orphan bridges, and dirty configurations
-wsl exec rm -rf "$wslHome/.aider/roles" "$wslHome/.aider/prompts" "$wslHome/.aider/user" "$wslHome/.aider/qdrant_mcp.py" "$wslHome/.aider.conf.yml" "$wslHome/.config/aider"
+wsl exec rm -rf "$wslHome/.aider/roles" "$wslHome/.aider/prompts" "$wslHome/.aider/user" "$wslHome/.aider/mcp_server.py" "$wslHome/.aider.conf.yml" "$wslHome/.config/aider"
 Write-Host '  |-- Telemetry: Legacy flat sub-directories and orphan scripts evicted.' -ForegroundColor Green
 
-Write-Host "`n[SUCCESS] Aider environment completely mapped with native Qdrant RAG protocol." -ForegroundColor Green
+Write-Host "`n[SUCCESS] Aider environment completely mapped with native Store RAG protocol." -ForegroundColor Green

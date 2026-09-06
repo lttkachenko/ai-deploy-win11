@@ -51,7 +51,7 @@ It validates target path permissions, scaffolds lowercase persistent runtimes in
 
 ### `.\pyparts_deploy.ps1`
 
-Upgrades global python package managers on the host. Installs the localized `litellm[proxy]` routing platform and instantiates an isolated hidden virtual environment (`.venv`) nested inside `~/.ai/.qdrant/` packed with locked enterprise async dependencies (`watchfiles==0.24.0`, `httpx==0.27.0`, `mcp==1.2.1`). It copies both `qdrant_watcher.py` and `libs.py` into the user operational workspace area.
+Upgrades global python package managers on the host. Installs the localized `litellm[proxy]` routing platform and instantiates an isolated hidden virtual environment (`.venv`) nested inside `~/.ai/.qdrant/` packed with locked enterprise async dependencies (`watchfiles==0.24.0`, `httpx==0.27.0`, `mcp==1.2.1`). It copies both `mcp_watcher.py` and `libs.py` into the user operational workspace area.
 
 ### `.\network_setup.ps1`
 
@@ -87,7 +87,7 @@ The pipeline complies with native Nomic specifications by forcing `search_docume
 * **Host Obsidian Vault Path:** `~\Vaults\v-dev`
 * **Target Qdrant Collection ID:** `db-dev`
 * **File Watcher Loop Engine:** Asynchronous, Rust-backed `watchfiles` worker monitoring real-time filesystem mutations, recursive Wiki-note transclusions `![[Note]]`, and metadata frontmatter stripping.
-* **Context Delivery Protocol:** Persistent host-level `qdrant_mcp.py` network service managed via `NSSM`, exposing an `SSE HTTP` transport stream on port 8000 for Aider (WSL), Cline (VS Code), and JetBrains IDE agents.
+* **Context Delivery Protocol:** Persistent host-level `mcp_server.py` network service managed via `NSSM`, exposing an `SSE HTTP` transport stream on port 8000 for Aider (WSL), Cline (VS Code), and JetBrains IDE agents.
 * **Content Scope:** System devops contexts, personalized user profiles, coding standards, corporate architecture blueprints, language-specific API maps, and enterprise rules.
 
 ### Personal Hobby Stream (db-hobby)

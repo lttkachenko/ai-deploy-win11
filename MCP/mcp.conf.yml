@@ -1,0 +1,45 @@
+# -----------------------------------------------------------------
+# Declarative FastMCP Network SSE Server Configuration Matrix (DOS-12)
+# -----------------------------------------------------------------
+inspector:
+  name: ai-sys-mcp-inspector
+  host: "http://127.0.0.1"
+  port: 8095
+  api_key: ai-sys-mcp-insp-key-default
+
+servers:
+  ai-dev-mcp-srv:
+    name: ai-dev-mcp-srv
+    host: "http://127.0.0.1"
+    port: 8096
+    store: "http://127.0.0.1"
+    store_port: 8093
+    store_db: db-dev
+    transport: http
+    api_key: ai-dev-mcp-srv-key-default
+    # =====================================================================
+    # DECLARATIVE MCP ROUTING MANIFEST (NestJS Style)
+    # =====================================================================
+    routing_manifest:
+      - mcp_endpoint: "resources"
+        target_folders:
+          - "Artifacts"
+          - "Insights"
+          - "Roles"
+          - "Skills"
+          - "User"
+        uri_pattern: "obsidian://{folder}/{path:path}"
+      - mcp_endpoint: "prompts"
+        target_folders:
+          - "Prompts"
+        uri_pattern: "obsidian://Prompts/{prompt_name}"
+
+watchers:
+  ai-dev-rag-wtr:
+    name: ai-dev-rag-wtr
+    engine: qdrant
+    db: db-dev
+    store: "http://127.0.0.1"
+    port: 8093
+    vault: 'D:\Obsidian\Vaults\v-dev'
+    api_key: ai-dev-rag-wtr-key-default
