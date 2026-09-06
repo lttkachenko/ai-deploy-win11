@@ -3,20 +3,24 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com).
 
-### [Development Snapshot] - DOS-13 (2026-08-18)
+## [Development Snapshot] - DOS-13 (2026-08-20)
 
 ### Added
 - (DOS-13) - Designed a unified Object-Oriented paradigm for the vector indexer layer by splitting contracts into `IStoreServiceBase` and `IStoreService`, introducing abstract factories (`StoreFactoryBase`, `StoreFactory`) to cleanly segregate light server search pipelines from heavy file-system watchers.
-- (DOS-13) - Engineered the `MCPServerGateway` managing class to completely encapsulate both FastAPI and FastMCP runtimes, migrating the entire server architecture to modern object state parameters (`self`) and completely eliminating anti-pattern global tracking states (`global`).
+- (DOS-13) - Engineered the `MCPServerGateway` managing class to completely encapsulate both FastAPI and FastMCP runtimes, migrating the entire server architecture to modern object state parameters (`self`) and completely eliminating antipattern global tracking states (`global`).
 - (DOS-13) - Integrated the modern `HTTPStreamable` transport protocol via explicit FastAPI mounting (`app.mount("/mcp", mcp.asgi())`), successfully exposing a native high-performance streaming layer alongside standard HTTP configurations.
 - (DOS-13) - Implemented a resilient, case-insensitive string normalization pipeline inside `libs/config_utils.py` driven by `.strip().lower()` and explicit quote purges (`.replace('"', "")`) to prevent silent config lookup failures caused by escaped Windows SCM and NSSM parameters.
+- (DOS-13) - Developed a decoupled routing layer class `MCPRouter` inside `libs/mcp/MCPRouter.py`, separating raw transport parsing logic from the gateway shell and utilizing modern Python 3.10+ structural pattern matching (`match/case`) instead of deep `if/elif` chains.
+- (DOS-13) - Implemented direct JSON-RPC interception for `tools/list` and `prompts/list` primitives inside the custom router, enabling the gateway to safely extract metadata from FastMCP decorator contexts when underlying core handlers are partially initialized.
 
 ### Modified
-- (DOS-13) - Refactored the core transaction engine inside `MCPService.py` to recursively sort and compile vector shards strictly by their absolute `chunk_id` sequence, successfully recreating unbroken markdown files from raw database points.
+- (DOS-13) - Refactored the core transaction engine inside `MCPService.py` to recursively sort and compile vector shards strictly by their absolute `chunk_id` sequence, successfully recreating unbroken Markdown files from raw database points.
 - (DOS-13) - Re-engineered the initialization pipelines in `StoreServiceQdrantBase` by moving configuration logic into a protected, polymorphic `_parse_config` method, allowing child classes to seamlessly inherit and extend database properties via clean `super()` chains.
 - (DOS-13) - Modernized the asset synchronization routine inside `mcp_deploy.ps1` by switching to recursive, forced directory synchronization (`Copy-Item -Recurse -Force`) to perfectly replicate the new nested `libs/store` and `libs/mcp` structure into the target runtime.
 - (DOS-13) - Upgraded the precompilation engine in `Precompile-MCPAssets.ps1` to invoke the native Python `compileall` module recursively, completely eliminating manual file loops and securing bytecode coverage for all inner packages.
 - (DOS-13) - Standardized the runtime path routing engine inside `libs/config_utils.py` to extract configuration matrices relative to the isolated active working directory (`os.getcwd()`), cleanly preventing environment race conditions during multi-daemon parallel boots.
+- (DOS-13) - Extended the `resources/templates/list` schema handler to expose a unified routing template (`obsidian://{folder}/{path}`), allowing advanced AI agents and inspectors to natively discover dynamic parameterized query rules.
+- (DOS-13) - Overhauled the query criteria inside `_reconstruct_file_from_shards` and `_build_virtual_directory_manifest` by switching filters from non-deterministic `MatchText` to absolute `MatchValue` conditions, aligning search transactions with the watcher's exact string layout.
 
 ### Fixed
 - (DOS-13) - Eliminated a persistent `ValueError` crash inside the NSSM runtime by fixing a multi-scope variable casing bug (`$venvPython` vs `$VenvPython`) and forcing an early `Set-Location` directive inside the isolated PowerShell session command block.
@@ -25,6 +29,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-13) - Rectified a permanent connection timeout inside `_await_store` by integrating an automated URL parser (`urlparse`) to strip application scheme prefixes (`http://`) and isolate clean host coordinates prior to low-level socket binding.
 - (DOS-13) - Eradicated code smells and SonarLint compilation warnings inside `_check_network_socket` by replacing empty context blocks and lazy `pass` operators with deterministic `.close()` socket release events.
 - (DOS-13) - Resolved a critical Python `NameError` inside `IMCPService.py` by introducing clean type annotations (`Optional`, `List`) into the header of the interface file.
+- (DOS-13) - Suppressed a critical `ValueError: too many values to unpack` crash inside Qdrant asynchronous search blocks by updating un-unpacked point tuples to capture offsets via trailing assignments (`scroll_result, _ = await ...`).
+- (DOS-13) - Resolved a critical JSON-RPC collision where internal core crashes implicitly fell back to transport discovery objects, by decoupling `resources/list` routing definitions and returning isolated, compliant resource lists.
+- (DOS-13) - Rectified a Liskov Substitution Principle (LSP) signature mismatch error and Sonar code analyzer blocker inside `MCPGateway.py` by restoring strict `(self, folder: str, path: str)` arguments to match the parent abstract interface layout.
+- (DOS-13) - Fixed a critical vector mapping error where reading files returned empty folder matrices (`### Directory Map`) due to incorrect schema indexing, by mapping Qdrant searches to verified file properties (`metadata.parent_path` and `metadata.uri_path`).
 
 ### Deprecated / Removed
 - (DOS-13) - **Deprecated**: The monolithic procedural script `libs.py` has been completely deprecated and broken down into isolated, single-responsibility OOP modules.
@@ -32,36 +40,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-13) - **Removed**: Eliminated volatile OS-level user environment variables from the deployment lifecycle to completely protect concurrent daemon processes from cross-process memory leaks and race conditions.
 - (DOS-13) - **Removed**: Stripped out loose, unbuffered global print statements across all files, substituting them with strict, atomic `flush=True` logs to guarantee instant disk output under Windows LocalSystem restrictions.
 
+---
 
-### [Development Snapshot] - DOS-12 (2026-08-02)
+## [Development Snapshot] - DOS-12 (2026-08-10)
 
 ### Added
-- (DOS-12) - Engineered a standalone, high-performance REST routing gateway engine inside `mcp_api.py` implementing a unified `/` POST endpoint to completely decouple the system client interface from raw JSON-RPC protocol layers.
-- (DOS-12) - Introduced a `ZERO_TEXT_OVERHEAD_AGGREGATION` routing policy within `mcp_api.py` that utilizes Qdrant whitelisted payload scrolls (`with_payload=['metadata.uri_path']`) to dynamically compile virtual directory trees without RAM fragmentation or heavy string parsing latencies.
-- (DOS-12) - Implemented a modern FastAPI `lifespan` context manager loop inside the production gateway layer to cleanly spin up and run the native FastMCP process on an isolated internal port (`8096`), successfully freeing port `8000` for host environment tasks.
+
 
 ### Modified
-- (DOS-12) - Refactored the core vector ingestion model inside `libs.py` to compute and inject Unix-like `uri_path` and `parent_path` metadata entries derived from absolute filesystem coordinates to build a virtual storage topology in Qdrant.
-- (DOS-12) - Migrated the shared inference initialization loop inside `libs.py` to a dynamic singleton reference slot inside `get_embedding` to allow lazy-loading of the PyTorch and SentenceTransformer modules on demand.
-- (DOS-12) - Re-engineered the centralized token retrieval pipeline inside `mcp_deploy.ps1` into a strict, section-aware YAML state-machine parser driven by native `.Split(':', 2)` operators to accurately isolate colliding `port` and `name` attributes across `servers` and `watchers` blocks.
-- (DOS-12) - Standardized the daemon profile allocation inside `mcp_deploy.ps1` by forcing early string expansion of the native .NET API `[System.Environment]::GetFolderPath("UserProfile")` and encapsulating string variables in curly braces (`${QdrantHost}:${QdrantPort}`) to prevent PowerShell token evaluation crashes.
+
 
 ### Fixed
-- (DOS-12) - Eradicated a severe multi-threaded startup deadlock during cold-boot sequences by isolating the heavy CPU-bound PyTorch model loading thread (`LoaderLock`) from the main FastMCP socket binding loop interface via deep lazy-loading.
-- (DOS-12) - Resolved an immediate runtime initialization drop caused by passing primitive dictionary queries to the modernized Qdrant SDK engine by standardizing all point eviction selectors strictly on concrete `Filter` object models.
-- (DOS-12) - Eliminated persistent incremental database indexing leakages by migrating the vector mutation pipeline to an explicit cryptographic SHA-256 unique identifier protocol targeted at absolute `uri_path` constraints.
-- (DOS-12) - Rectified a deployment blocker where corrupt legacy service configurations trapped NSSM in unmanaged states by deploying low-level `sc.exe delete` and explicit registry purges (`HKLM:\SYSTEM\CurrentControlSet\Services`) prior to resource orchestration.
-- (DOS-12) - Fixed a critical Python `TypeError` inside `mcp_api.py` caused by illegal string-to-list concatenation during sub-directory offset splits by standardizing target path evaluation limits strictly on native string formatting tokens.
 
-### Known Issues
-- **Windows LocalSystem Network Binding Block**: Running the background service nodes under the unprivileged `LocalSystem` account wrapper can occasionally cause the native .NET socket validation layers inside the deployment script to drop out due to strict host-level IPv6 loopback routing constraints, requiring operator profile context fallback map alignment.
+
+### Deprecated / Removed
+
 
 ---
 
 ## [Development Snapshot] - DOS-11 (2026-07-31)
 
 ### Added
-- (DOS-11) - Implemented a high-performance, asynchronous background workspace hydration scan loop inside `mcp_watcher.py` using native `os.walk` streams to completely index legacy markdown assets on startup boundary before initiating the `watchfiles` event loop.
+- (DOS-11) - Implemented a high-performance, asynchronous background workspace hydration scan loop inside `mcp_watcher.py` using native `os.walk` streams to completely index legacy Markdown assets on startup boundary before initiating the `watchfiles` event loop.
 - (DOS-11) - Integrated an automated pre-flight environment discovery and directory scavenging block into `qdrant_deploy.ps1` to migrate `qdrant_healthz.ps1` into the centralized production runtime binaries directory (`~/.ai/bin/`).
 - (DOS-11) - Introduced explicit, flexible path mapping capabilities inside `aider_run.sh` by provisioning the `-c` / `--config` CLI switch to natively intercept, override, and pass custom execution configuration slots.
 - (DOS-11) - Scaffolded a dedicated, isolated runtime telemetry collection boundary at `~/.aider/log/` backed by a native bash `tee` output redirection sequence inside `aider_run.sh` to capture unified stdout and stderr logs.
@@ -108,7 +108,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-10) - Mitigated a severe runtime directory drifting bug inside `pyparts_deploy.ps1` by swapping single-character string trimmers with an absolute, non-destructive regex path normalization pattern that preserves Unix-style dot definitions (`.ai/`).
 - (DOS-10) - Cleared an immediate `ModuleNotFoundError` inside host service containers by hard-coding explicit sys-path modifications (`sys.path.insert`) to force the `LocalSystem` engine to look up internal modules inside the exact execution directory.
 - (DOS-10) - Eradicated a fatal `Null` execution command crash at step 5.3 of the backend deployment script by aligning raw output pipeline redirections with the native PowerShell `Out-Null` cmdlet signature.
-- (DOS-10) - Resolved a severe file parsing drift inside `mcp_watcher.py` by completely expunging copy-paste function duplicates, routing all markdown processing pipelines strictly through the verified `libs.index_file` coordinate.
+- (DOS-10) - Resolved a severe file parsing drift inside `mcp_watcher.py` by completely expunging copy-paste function duplicates, routing all Markdown processing pipelines strictly through the verified `libs.index_file` coordinate.
 
 ### Known Issues
 - **Hugging Face Rate Limiting Blocks**: Initializing cold boots of the shared CPU transformation pipeline from unauthenticated terminal instances triggers frequent `huggingface_hub` connection delay cycles. Production environments should explicitly provision an absolute `HF_TOKEN` macro value inside the NSSM wrapper extra environment space to ensure high-priority rate limits [DOS-7].
@@ -154,7 +154,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 
 ### Modified
 - (DOS-8) - Deprecated the unstable, interactive `lms get` CLI command sequence due to unbypassable TTY Win32 Console ReadKey locks and pseudo-graphic prompt blocks.
-- (DOS-8) - Unified all network downloading processes by offloading heavy GGUF and mmproj weight ingestion routines directly to the centralized, multi-threaded `Utils\asset_downloader.ps1` script core.
+- (DOS-8) - Unified all network downloading processes by offloading heavy GGUF and mmproj weight ingestion routines directly to the centralized, multithreaded `Utils\asset_downloader.ps1` script core.
 - (DOS-8) - Forced the model download pipeline to retain strict, immutable case sensitivity across author names, repositories, and filenames to satisfy Hugging Face CDN routing rules.
 
 ### Fixed
@@ -191,7 +191,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-7) - Secured the `mcp_watcher.py` file mapping logic by forcing index arrays to index `[0]` inside `os.path.splitext`, preventing runtime task drops on dot-nested file tags.
 - (DOS-7) - Eliminated duplicate vector node allocations inside `libs.py` by removing the unstable `time.time()` string slice from the `point_id` hash algorithm.
 - (DOS-7) - Resolved critical Python async consistency block errors by wrapping the heavy synchronous `.encode()` method inside `asyncio.to_thread()`, moving CPU tensor generation entirely off the main event loop thread.
-- (DOS-7) - Fixed I/O blocking blocks inside `libs.py` by wrapping standard synchronous `open()` and recursive transclusion file reads inside an isolated `asyncio.to_thread()` pipeline.
+- (DOS-7) - Fixed I/O blocks inside `libs.py` by wrapping standard synchronous `open()` and recursive transclusion file reads inside an isolated `asyncio.to_thread()` pipeline.
 - (DOS-7) - Corrected Sonar / Linter security hotspot flags inside `qdrant_deploy.ps1` by expanding the truncated health check address to a valid production `http://127.0.0` URI.
 
 ---
@@ -203,7 +203,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-6) - Swapped out legacy synchronous `watchdog` file system auditor for high-performance, Rust-backed `watchfiles` runtime loop inside `mcp_watcher.py`.
 - (DOS-6) - Unified the embedding generation engine by implementing a dynamic factory method (`get_embedding`) inside `libs.py`, abstracting format schemas for both Ollama (`/api/embed`) and OpenAI/LM-Studio (`/v1/embeddings`) endpoints.
 - (DOS-6) - Hardcoded idempotent global resource constraint checks into `infra_deploy.ps1` utilizing SHA256 file hashing to safely deploy strict memory (`16GB`) and CPU boundaries via `.wslconfig` prior to launching Docker networks.
-- (DOS-6) - Refactored `models_deploy.ps1` into an adaptive IaC factory module with headless bootstrap integration for the advanced `llmster` background daemon and native multi-threaded `lms` CLI toolchain down to local machines.
+- (DOS-6) - Refactored `models_deploy.ps1` into an adaptive IaC factory module with headless bootstrap integration for the advanced `llmster` background daemon and native multithreaded `lms` CLI toolchain down to local machines.
 
 ### Modified
 - (DOS-6) - Migrated the low-level `mcp_server.py` transport layer from high-level `FastMCP` decorators to official `mcp.server` primitives to natively handle concurrent client requests without clogging the loop.
@@ -233,7 +233,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 ## [Development Snapshot] - 2026-07-07
 
 ### Added
-- (DOS-1) - Integrated FastMCP python framework bindings inside WSL (`mcp_server.py`) to expose real-time context injections to the Aider runtime agent via stdio transport channels.
+- (DOS-1) - Integrated FastMCP Python framework bindings inside WSL (`mcp_server.py`) to expose real-time context injections to the Aider runtime agent via stdio transport channels.
 - (DOS-1) - Added automated background persistence triggers for file-watchers by nesting execution commands inside the Windows Task Scheduler, bypassing local service permission blocks.
 - (DOS-1) - Introduced automated model dependency evaluations using direct regex parsing maps against local YAML shortcode matrix configurations.
 

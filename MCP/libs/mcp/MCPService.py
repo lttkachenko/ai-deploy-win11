@@ -84,67 +84,93 @@ class MCPService(IMCPService):
     print(f"[MCP-SERVICE] Логика транзакций привязана к векторной коллекции: '{self._collection_name}'")
 
   async def _build_virtual_directory_manifest(self, target_folder: str) -> str:
-    """PIPELINE A: Эмуляция виртуального дерева директорий (ls -l)."""
-    print(f"[MCP-SERVICE] Скроллинг схемы папки для индекса: {target_folder}")
+    """PIPELINE A: Generates virtual directory listings by scanning Qdrant metadata."""
+    print(f"[MCP-SERVICE] Building virtual file structure for directory: '{target_folder}'", flush = True)
 
+    # Query Qdrant for any points belonging to this folder matching parent_path key
     scroll_result, _ = await self._store_client.client.scroll(
       collection_name = self._collection_name,
       scroll_filter = models.Filter(
-        must = [models.FieldCondition(key = "metadata.folder", match = models.MatchValue(value = target_folder))]
-      ),
-      limit = 100,
-      with_payload = ["metadata.file_name"],
-      with_vectors = False
-    )
-
-    unique_files = sorted({
-      point.payload.get("metadata", {}).get("file_name")
-      for point in scroll_result if point.payload and "metadata" in point.payload
-    })
-
-    if not unique_files:
-      return f"### Directory Map: obsidian://{target_folder}/\nВиртуальная директория пуста."
-
-    ls_payload = f"### Content listing for virtual directory: obsidian://{target_folder}/\n"
-    for f_name in unique_files:
-      ls_payload += f"- [FILE] obsidian://{target_folder}/{f_name}\n"
-
-    return ls_payload
-
-  async def _reconstruct_file_from_shards(self, target_folder: str, sub_path: str) -> str:
-    """PIPELINE B: Сборка текстовых осколков (shards) обратно в Markdown."""
-    print(f"[MCP-SERVICE] Сборка векторных чанков для файла: '{sub_path}' в папке '{target_folder}'")
-
-    file_points, _ = await self._store_client.client.scroll(
-      collection_name = self._collection_name,
-      scroll_filter = models.Filter(
-          must=[
-            models.FieldCondition(key = "metadata.folder", match = models.MatchValue(value = target_folder)),
-            models.FieldCondition(key = "metadata.file_name", match = models.MatchText(text = sub_path))
-          ]
+        must = [
+          models.FieldCondition(key = "metadata.parent_path", match = models.MatchValue(value = target_folder))
+        ]
       ),
       limit = 100,
       with_payload = True,
       with_vectors = False
     )
 
-    # Резильентный фолбэк: если файл не найден, откатываемся к выводу списка папки
-    if not file_points:
-      print(f"[MCP-SERVICE] Файл '{sub_path}' отсутствует. Откат к маппингу директории.")
-      return await self._build_virtual_directory_manifest(target_folder)
+    if not scroll_result:
+      return f"### Virtual Directory Error\nFolder 'obsidian://{target_folder}' contains no vectorized assets."
 
-    # Сортируем куски по оригинальному chunk_id
-    sorted_points = sorted(
-        file_points,
-        key = lambda x: x.payload.get("metadata", {}).get("chunk_id", 0) if x.payload else 0
+    unique_files = set()
+    for point in scroll_result:
+      if point.payload and "metadata" in point.payload:
+        meta = point.payload["metadata"]
+        # Pull from verified uri_path or source_file keys used by the watcher
+        raw_name = meta.get("uri_path") or meta.get("source_file") or "Unnamed"
+        clean_name = raw_name.split("/")[-1] if "/" in str(raw_name) else raw_name
+        if clean_name and clean_name != "Unnamed":
+          unique_files.add(clean_name)
+
+    manifest_lines = []
+    manifest_lines.append(f"### Content listing for virtual directory: obsidian://{target_folder}/")
+    if not unique_files:
+      manifest_lines.append("*No document assets found mapping to this directory path node.*")
+    else:
+      for doc_name in sorted(unique_files):
+        manifest_lines.append(f"- [FILE] obsidian://{target_folder}/{doc_name}")
+
+    return "\n".join(manifest_lines)
+
+  async def _reconstruct_file_from_shards(self, target_folder: str, sub_path: str) -> str:
+    """PIPELINE B: Reconstruct text shards back into Markdown using verified uri_path keys."""
+    # Reconstruct the exact uri pattern that the watcher script inserts into Qdrant
+    target_uri_path = f"{target_folder}/{sub_path}"
+    print(f"[MCP-SERVICE] Assembling shards for file via uri_path: '{target_uri_path}'", flush = True)
+
+    file_points, _ = await self._store_client.client.scroll(
+      collection_name = self._collection_name,
+      scroll_filter = models.Filter(
+        must = [
+          # Targeted lookup against the verified metadata field layout
+          models.FieldCondition(key = "metadata.uri_path", match = models.MatchValue(value = target_uri_path))
+        ]
+      ),
+      limit = 100,
+      with_payload = True,
+      with_vectors = False
     )
 
-    # Склеиваем массив текстовых блоков в один поток
-    compiled_doc = []
-    first_payload = sorted_points[0].payload if (sorted_points and sorted_points[0].payload) else {}
-    actual_title = first_payload.get("metadata", {}).get("file_name", sub_path)
+    # Secondary fallback check: try matching just the filename if the full combined path fails
+    if not file_points:
+      print(f"[MCP-SERVICE] Targeted lookup failed for '{target_uri_path}'. Retrying with sub_path...", flush = True)
+      file_points, _ = await self._store_client.client.scroll(
+        collection_name = self._collection_name,
+        scroll_filter = models.Filter(
+          must = [
+            models.FieldCondition(key = "metadata.parent_path", match = models.MatchValue(value = target_folder)),
+            models.FieldCondition(key = "metadata.uri_path", match = models.MatchValue(value = sub_path))
+          ]
+        ),
+        limit = 100,
+        with_payload = True,
+        with_vectors = False
+      )
 
-    compiled_doc.append(f"# KNOWLEDGE SOURCE: obsidian://{target_folder}/{actual_title}\n")
+    # Ultimate fallback sequence to directory manifest map
+    if not file_points:
+      print(f"[MCP-SERVICE] Shards completely missing for '{sub_path}'. Invoking fallback map.", flush = True)
+      return await self._build_virtual_directory_manifest(target_folder)
+
+    # Standard chunk assembly implementation block
+    sorted_points = sorted(
+      file_points,
+      key = lambda x: x.payload.get("metadata", {}).get("chunk_id", 0) if x.payload else 0
+    )
+
+    compiled_doc = []
+    compiled_doc.append(f"# KNOWLEDGE SOURCE: obsidian://{target_folder}/{sub_path}\n")
     for point in sorted_points:
       if point.payload and "text" in point.payload:
         compiled_doc.append(point.payload["text"])
