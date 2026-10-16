@@ -1,7 +1,7 @@
 # ENTERPRISE CORE INSIGHTS: MULTI-TIER OOP PARADIGM & ISOLATED RUNTIME CONFIGURATION SEGREGATION (DOS-13)
 
 ## 1. STRATIFIED COMPONENT CONTRACTS (DECOUPLED ABSTRACTION SEGREGATION)
-- **Insight**: Coupling data-ingestion mechanisms, real-time filesystem watchers, and read-only text-search vector layers into a single monolithic storage client forces light query operations to spin up toxic multi-threaded background synchronization workers. In parallel runtime scenarios (like a FastMCP Server and a Watcher running concurrently), this architecture leads to database state corruption and severe I/O thrashing on the vector engine cluster.
+- **Insight**: Coupling data-ingestion mechanisms, real-time filesystem watchers, and read-only text-search vector layers into a single monolithic storage client forces light query operations to spin up toxic multithreaded background synchronization workers. In parallel runtime scenarios (like a FastMCP Server and a Watcher running concurrently), this architecture leads to database state corruption and severe I/O thrashing on the vector engine cluster.
 - **Architectural Rule**: Storage and index boundaries must strictly follow a stratified OOP interface layout. Heavy stateful write operations must be locked inside an extended `IStoreService` contract, while read-only transactional engines must depend solely on a lightweight, decoupled `IStoreServiceBase` interface. Decoupling must be strictly governed by abstract factory layers (`StoreFactoryBase`), preventing server gateways from ever initiating unauthorized file-system threads.
 
 ## 2. EXPLICIT RUNTIME APP BINDING (MAPPED ASGI-STREAM CONTEXT INTEGRATION)
