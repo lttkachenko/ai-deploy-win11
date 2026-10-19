@@ -6,5 +6,6 @@ from .StoreConnectorQdrant import StoreConnectorQdrant
 from .StoreConnectorFactory import StoreConnectorFactory
 from .MCPService import MCPService
 from .MCPAuthMiddleware import MCPAuthMiddleware
+from .MCPRouter import MCPRouter
 from .IMCPGateway import IMCPGateway
 from .MCPGateway import MCPGateway

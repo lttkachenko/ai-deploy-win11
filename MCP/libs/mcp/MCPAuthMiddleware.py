@@ -17,7 +17,7 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
     if request.url.path in ["/healthz", "/healthz/"]:
       return await call_next(request)
 
-    if request.url.path in ["/mcp", "/mcp/"]:
+    if request.url.path in ["/", "/mcp", "/mcp/"]:
       return await call_next(request)
 
     if request.method == "OPTIONS":
