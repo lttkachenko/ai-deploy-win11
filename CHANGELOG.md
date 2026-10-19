@@ -29,10 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-13) - Rectified a permanent connection timeout inside `_await_store` by integrating an automated URL parser (`urlparse`) to strip application scheme prefixes (`http://`) and isolate clean host coordinates prior to low-level socket binding.
 - (DOS-13) - Eradicated code smells and SonarLint compilation warnings inside `_check_network_socket` by replacing empty context blocks and lazy `pass` operators with deterministic `.close()` socket release events.
 - (DOS-13) - Resolved a critical Python `NameError` inside `IMCPService.py` by introducing clean type annotations (`Optional`, `List`) into the header of the interface file.
-- (DOS-13) - Suppressed a critical `ValueError: too many values to unpack` crash inside Qdrant asynchronous search blocks by updating un-unpacked point tuples to capture offsets via trailing assignments (`scroll_result, _ = await ...`).
-- (DOS-13) - Resolved a critical JSON-RPC collision where internal core crashes implicitly fell back to transport discovery objects, by decoupling `resources/list` routing definitions and returning isolated, compliant resource lists.
-- (DOS-13) - Rectified a Liskov Substitution Principle (LSP) signature mismatch error and Sonar code analyzer blocker inside `MCPGateway.py` by restoring strict `(self, folder: str, path: str)` arguments to match the parent abstract interface layout.
-- (DOS-13) - Fixed a critical vector mapping error where reading files returned empty folder matrices (`### Directory Map`) due to incorrect schema indexing, by mapping Qdrant searches to verified file properties (`metadata.parent_path` and `metadata.uri_path`).
+- (DOS-13) - Windows EnvVars and **$PATH** fixed.
 
 ### Deprecated / Removed
 - (DOS-13) - **Deprecated**: The monolithic procedural script `libs.py` has been completely deprecated and broken down into isolated, single-responsibility OOP modules.
@@ -51,6 +48,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 
 
 ### Fixed
+- (DOS-12) - Eradicated a severe multithreaded startup deadlock during cold-boot sequences by isolating the heavy CPU-bound PyTorch model loading thread (`LoaderLock`) from the main FastMCP socket binding loop interface via deep lazy-loading.
+- (DOS-12) - Resolved an immediate runtime initialization drop caused by passing primitive dictionary queries to the modernized Qdrant SDK engine by standardizing all point eviction selectors strictly on concrete `Filter` object models.
+- (DOS-12) - Eliminated persistent incremental database indexing leakages by migrating the vector mutation pipeline to an explicit cryptographic SHA-256 unique identifier protocol targeted at absolute `uri_path` constraints.
+- (DOS-12) - Rectified a deployment blocker where corrupt legacy service configurations trapped NSSM in unmanaged states by deploying low-level `sc.exe delete` and explicit registry purges (`HKLM:\SYSTEM\CurrentControlSet\Services`) prior to resource orchestration.
+- (DOS-12) - Fixed a critical Python `TypeError` inside `mcp_api.py` caused by illegal string-to-list concatenation during subdirectory offset splits by standardizing target path evaluation limits strictly on native string formatting tokens.
 
 
 ### Deprecated / Removed
@@ -191,8 +193,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com).
 - (DOS-7) - Secured the `mcp_watcher.py` file mapping logic by forcing index arrays to index `[0]` inside `os.path.splitext`, preventing runtime task drops on dot-nested file tags.
 - (DOS-7) - Eliminated duplicate vector node allocations inside `libs.py` by removing the unstable `time.time()` string slice from the `point_id` hash algorithm.
 - (DOS-7) - Resolved critical Python async consistency block errors by wrapping the heavy synchronous `.encode()` method inside `asyncio.to_thread()`, moving CPU tensor generation entirely off the main event loop thread.
-- (DOS-7) - Fixed I/O blocks inside `libs.py` by wrapping standard synchronous `open()` and recursive transclusion file reads inside an isolated `asyncio.to_thread()` pipeline.
-- (DOS-7) - Corrected Sonar / Linter security hotspot flags inside `qdrant_deploy.ps1` by expanding the truncated health check address to a valid production `http://127.0.0` URI.
+- (DOS-7) - Fixed I/O blocking inside `libs.py` by wrapping standard synchronous `open()` and recursive transclusion file reads inside an isolated `asyncio.to_thread()` pipeline.
+- (DOS-7) - Corrected Sonar / Linter security hotspot flags inside `qdrant_deploy.ps1` by expanding the truncated health check address to a valid production `http://127.0.01:8093/healthz` URI.
 
 ---
 

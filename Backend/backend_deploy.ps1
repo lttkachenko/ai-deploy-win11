@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-Write-Host '>>> Bootstrapping Hybrid Headless AI Stack Configuration Layout...' -ForegroundColor Yellow
+Write-Host '>>> Bootstrapping Native Llama Server & Llama-Swap Matrix...' -ForegroundColor Yellow
 
 # 1. Environment and Workspace Discovery
 $winUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.Split('\')[-1]
@@ -28,16 +28,16 @@ if (-not (Test-Path $ctxStorage))  { New-Item -ItemType Directory -Path $ctxStor
 $manifest = Get-Content -Raw -Path $manifestPath | ConvertFrom-Json
 $backendDeps = $manifest.dependencies.backend
 
-$lmsSpec = $backendDeps | Where-Object { $_.alias -eq 'llmster' }
-$swapSpec = $backendDeps | Where-Object { $_.alias -eq 'llama-swap' }
-$nssmSpec = $backendDeps | Where-Object { $_.alias -eq 'nssm_wrapper' }
+$serverSpec = $backendDeps | Where-Object { $_.alias -eq 'llama-server' }
+$swapSpec   = $backendDeps | Where-Object { $_.alias -eq 'llama-swap' }
+$nssmSpec   = $backendDeps | Where-Object { $_.alias -eq 'nssm_wrapper' }
 
-# 2. Sequential Flat Component Ingestion (No loops, pure stability)
-Write-Host ' |-- Delivering infrastructure binaries sequentially...' -ForegroundColor Cyan
+# 2. Sequential Component Ingestion
+Write-Host ' |-- Delivering infrastructure components sequentially...' -ForegroundColor Cyan
 
-# Step 2.1: Deliver LM Studio Headless Daemon
-$lmsString = ConvertTo-Json -InputObject $lmsSpec -Compress
-& $downloaderScript -DependencyJson $lmsString -DestinationDir $binStorage
+# Step 2.1: Deliver Native Llama-Server Binary
+$serverString = ConvertTo-Json -InputObject $serverSpec -Compress
+& $downloaderScript -DependencyJson $serverString -DestinationDir $binStorage
 
 # Step 2.2: Deliver Llama-Swap Proxy
 $swapString = ConvertTo-Json -InputObject $swapSpec -Compress
@@ -56,10 +56,6 @@ $sourcePrompt = Join-Path $PSScriptRoot 'system_prompt.txt'
 $targetConfigPath = Join-Path $confStorage 'llama-swap.conf.yml'
 $targetPromptPath = Join-Path $ctxStorage 'system_prompt.txt'
 
-# Default safe network fallbacks
-$detectedHost = '127.0.0.1'
-$detectedPort = 8090
-
 if (Test-Path $sourceConfig) {
   $rawConfig = Get-Content -Raw -Path $sourceConfig
   $absoluteHome = $homeDir -replace '\\', '/'
@@ -67,20 +63,17 @@ if (Test-Path $sourceConfig) {
   Set-Content -Path $targetConfigPath -Value $patchedConfig -Force
   Write-Host "   |-- Synced and absolute-patched routing matrix layout: $targetConfigPath" -ForegroundColor Gray
 
-  # Extract SW_HOST via precise regex group matching to evade multi-token collisions (DOS-9)
+  # Strict non-negotiable extraction from yml matrix layout
   if ($patchedConfig -match 'SW_HOST:\s*([\d\.]+)') {
     $detectedHost = $Matches[1].Trim()
-    Write-Host "   |-- Target host successfully extracted from config matrix: $detectedHost" -ForegroundColor Cyan
   } else {
-    Write-Host "   |-- [WARNING] SW_HOST token not found in config macros. Using fallback: $detectedHost" -ForegroundColor Yellow
+    throw '[FATAL] Critical configuration token missing: SW_HOST must be explicitly defined in llama-swap.conf.yml'
   }
 
-  # Extract SW_PORT via precise regex group matching to evade multi-token collisions (DOS-9)
   if ($patchedConfig -match 'SW_PORT:\s*(\d+)') {
     $detectedPort = [int]$Matches[1]
-    Write-Host "   |-- Target port successfully extracted from config matrix: $detectedPort" -ForegroundColor Cyan
   } else {
-    Write-Host "   |-- [WARNING] SW_PORT token not found in config macros. Using fallback: $detectedPort" -ForegroundColor Yellow
+    throw '[FATAL] Critical configuration token missing: SW_PORT must be explicitly defined in llama-swap.conf.yml'
   }
 } else {
   throw "[FATAL] Distribution asset broken. Missing source Backend\llama-swap.conf.yml"
@@ -88,12 +81,19 @@ if (Test-Path $sourceConfig) {
 
 if (Test-Path $sourcePrompt) {
   Copy-Item -Path $sourcePrompt -Destination $targetPromptPath -Force
-  Write-Host "   |-- Synced identity anchor node: $targetPromptPath" -ForegroundColor Gray
 }
 
-# 4. Refresh Host Environment PATH Context
+# 4. Refresh Host Environment PATH Context for User and Machine Registry
 Write-Host ' |-- Refreshing host environment PATH context...' -ForegroundColor Cyan
 $userRegPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+
+if ($userRegPath -notlike "*$binStorage*") {
+  Write-Host '   |-- Registering AI bin directory into persistent User PATH registry...' -ForegroundColor Gray
+  $updatedUserPath = $userRegPath.TrimEnd(';') + ';' + $binStorage
+  [System.Environment]::SetEnvironmentVariable('Path', $updatedUserPath, 'User')
+  $userRegPath = $updatedUserPath
+}
+
 $machineRegPath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
 $env:Path = $userRegPath + ';' + $machineRegPath
 
@@ -105,30 +105,13 @@ $nssmExe        = Join-Path $binStorage $nssmSpec.target_file
 $runtimeLogFile = Join-Path $logStorage 'llama-swap.log'
 $swapExePath    = Join-Path $binStorage $swapSpec.binary
 
-# Hard Force Check: Re-verify physical binary localization to avoid symlink locks
-$globalSwap = Get-Command 'llama-swap.exe' -ErrorAction SilentlyContinue
-if ($globalSwap -and (-not (Test-Path $swapExePath))) { Copy-Item -Path $globalSwap.Source -Destination $swapExePath -Force }
-
-# Fix 5.1: Unblock delivery binaries to completely remove Windows zone identifier locks
 Get-ChildItem -Path $binStorage -Filter "*.exe" | Unblock-File
 
-# Fix 5.2: Force kill any orphan processes holding backend sockets before service re-bind
 Write-Host '   |-- Purging orphan backend and proxy execution tasks...' -ForegroundColor Yellow
 Stop-Process -Name 'llama-swap' -Force -ErrorAction SilentlyContinue
 Stop-Process -Name 'llama-server' -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 
-# Explicitly boot the LM Studio headless daemon engine layer before spawning proxy
-$lmsBinary = Join-Path $env:LOCALAPPDATA "Programs\lmstudio\$($lmsSpec.binary)"
-if (-not (Test-Path $lmsBinary)) { $lmsBinary = "C:\Program Files\LM Studio\$($lmsSpec.binary)" }
-
-if (Test-Path $lmsBinary) {
-  Write-Host '   |-- Pre-booting LM Studio Core API Daemon process...' -ForegroundColor Gray
-  Start-Process -FilePath $lmsBinary -ArgumentList "server start" -WindowStyle Hidden
-  Start-Sleep -Seconds 4
-}
-
-# Smart teardown path. If service exists, choose teardown tool based on nssm.exe presence
 $serviceCheck = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 if ($serviceCheck) {
   Write-Host '   |-- Active service container found. Triggering teardown sequence...' -ForegroundColor Yellow
@@ -139,27 +122,19 @@ if ($serviceCheck) {
 
 Write-Host '   |-- Registering headless proxy service instance via NSSM...' -ForegroundColor Green
 
-# Fix 5.3: Enforce strict isolated endpoints integration by passing programmatic listen macros (DOS-7)
+$userAppData         = Join-Path $homeDir 'AppData\Roaming'
+$userLocalAppData    = Join-Path $homeDir 'AppData\Local'
+$serviceIsolatedPath = "$binStorage;$env:Path"
+
 & $nssmExe install $serviceName "$swapExePath" --config "$targetConfigPath" --listen "${detectedHost}:${detectedPort}" | Out-Null
 & $nssmExe set $serviceName AppDirectory "$binStorage" | Out-Null
-& $nssmExe set $serviceName AppStdout "$runtimeLogFile" | Out-Null
+& $nssmExe set $serviceName AppStdout "$runtimeLogFile" | Null
 & $nssmExe set $serviceName AppStderr "$runtimeLogFile" | Out-Null
 
-# Force execution parameters block isolation under LocalSystem context with native variables mapping
 & $nssmExe set $serviceName ObjectName "LocalSystem" | Out-Null
-& $nssmExe set $serviceName AppEnvironmentExtra "USERPROFILE=$homeDir" "LOCALAPPDATA=$env:LOCALAPPDATA" "PATH=$env:Path" | Out-Null
+& $nssmExe set $serviceName AppEnvironmentExtra "USERPROFILE=$homeDir" "APPDATA=$userAppData" "LOCALAPPDATA=$userLocalAppData" "PATH=$serviceIsolatedPath" | Out-Null
 & $nssmExe set $serviceName AppExit Default Restart | Out-Null
 & $nssmExe set $serviceName AppThrottle 5000 | Out-Null
 
-# Allow Windows service database cache alignment
 Start-Sleep -Seconds 3
-
-try {
-  Start-Service -Name $serviceName
-  Write-Host "   |-- [SUCCESS] NSSM Service container is online at ${detectedHost}:${detectedPort}. Telemetry fully routed to .ai/log/llama-swap.log" -ForegroundColor Green
-}
-catch {
-  Write-Host '`n[CRITICAL] Service failed to boot. Dumping latest telemetry records:' -ForegroundColor Red
-  if (Test-Path $runtimeLogFile) { Get-Content -Path $runtimeLogFile -Tail 5 | Write-Host -ForegroundColor Red }
-  throw "[FATAL] Service boot sequence collapsed. Trace: $_"
-}
+Write-Host ">>> Backend deployment pipeline completed successfully for user: $winUser" -ForegroundColor Green

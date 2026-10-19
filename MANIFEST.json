@@ -12,6 +12,13 @@
         "binary": "lms.exe"
       },
       {
+        "name": "llama-cpp-server",
+        "alias": "llama-server",
+        "version": "b4600",
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11006/cudart-llama-bin-win-cuda-13.4-x64.zip",
+        "binary": "llama-server.exe"
+      },
+      {
         "name": "lm-studio-swap",
         "alias": "llama-swap",
         "version": "v240",

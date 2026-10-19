@@ -11,7 +11,8 @@ from libs.store import StoreType
 from .IMCPGateway import IMCPGateway
 from .MCPService import MCPService
 from .MCPAuthMiddleware import MCPAuthMiddleware
-from .MCPRouter import MCPRouter
+from .MCPNativeController import MCPNativeController
+
 
 @asynccontextmanager
 async def gateway_lifespan(app: FastAPI):
@@ -31,11 +32,21 @@ class MCPGateway(IMCPGateway):
     self.app = FastAPI(title = "Explicit Production Gateway", lifespan = gateway_lifespan)
     self.app.state.gateway = self
 
-    self.router = MCPRouter(app = self.app, gateway = self)
-    self.router.register_routes()
+    # ИНИЦИАЛИЗИРУЕМ ВЫДЕЛЕННЫЙ ДЕКЛАРАТИВНЫЙ КОНТРОЛЛЕР РОУТОВ
+    self.mcp_controller = MCPNativeController(
+      app = self.app,
+      mcp = self.mcp,
+      mcp_service = self.mcp_service
+    )
 
+    # Регистрируем оставшиеся инфраструктурные слои
+    self._register_http_routes()
     self._register_mcp_routes()
     self._setup_security()
+
+  # ==========================================
+  # РЕАЛИЗАЦИЯ МЕТОДОВ ИНТЕРФЕЙСА IMCPGateway
+  # ==========================================
 
   async def on_startup(self) -> None:
     print("[INIT] Securing connector session to vector store cluster...", flush = True)
@@ -106,7 +117,8 @@ class MCPGateway(IMCPGateway):
       allow_origins = ["*"],
       allow_credentials = True,
       allow_methods = ["*"],
-      allow_headers = ["*"]
+      allow_headers = ["*"],
+      expose_headers = ["mcp-protocol-version", "X-MCP-Protocol-Version"]
     )
 
   def _register_mcp_routes(self) -> None:
