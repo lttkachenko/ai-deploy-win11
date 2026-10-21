@@ -4,7 +4,7 @@
 $ErrorActionPreference = 'Stop'
 
 Write-Host '=================================================================' -ForegroundColor Cyan
-Write-Host '>>> Initiating Target Model Weight Ingestion Pipeline...' -ForegroundColor Cyan
+Write-Host '>>> Initiating Target Model Weight Ingestion Pipeline...         ' -ForegroundColor Cyan
 Write-Host '=================================================================' -ForegroundColor Cyan
 
 # 1. Discover target configurations and core utils paths
