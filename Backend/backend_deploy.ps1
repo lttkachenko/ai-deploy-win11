@@ -128,7 +128,7 @@ $serviceIsolatedPath = "$binStorage;$env:Path"
 
 & $nssmExe install $serviceName "$swapExePath" --config "$targetConfigPath" --listen "${detectedHost}:${detectedPort}" | Out-Null
 & $nssmExe set $serviceName AppDirectory "$binStorage" | Out-Null
-& $nssmExe set $serviceName AppStdout "$runtimeLogFile" | Null
+& $nssmExe set $serviceName AppStdout "$runtimeLogFile" | Out-Null
 & $nssmExe set $serviceName AppStderr "$runtimeLogFile" | Out-Null
 
 & $nssmExe set $serviceName ObjectName "LocalSystem" | Out-Null

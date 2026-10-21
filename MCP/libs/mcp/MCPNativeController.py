@@ -99,11 +99,10 @@ class MCPNativeController:
     return self._build_fallback_response(single_payload.get("id", 0), is_batch, headers)
 
   def _build_explicit_init_response(self, request_id: Any, is_batch: bool, method_call: str, headers: Dict[str, str]) -> Response:
-    """Формирование явного ответа на методы initialize и server/discover."""
+    """Формирование явного ответа на методы initialize и server/discover под Legacy-режим инспектора."""
     if method_call == "server/discover":
-      # ТОЧНАЯ JSON-RPC СТРУКТУРА, КОТОРУЮ ТРЕБУЕТ ZOD ИНСПЕКТОРА
       result_payload = {
-        "protocolVersions": ["2026-07-28"],
+        "protocolVersions": ["2025-11-25"],
         "serverInfo": {
           "name": "ai-dev-mcp-srv",
           "version": "1.0.0"
@@ -111,7 +110,7 @@ class MCPNativeController:
       }
     else:
       result_payload = {
-        "protocolVersion": "2026-07-28",
+        "protocolVersion": "2025-11-25",
         "capabilities": {
           "resources": {"subscribe": True, "listChanged": True},
           "prompts": {"listChanged": True},
@@ -129,12 +128,12 @@ class MCPNativeController:
     return self._build_raw_network_response(200, json.dumps(final_content, ensure_ascii = False))
 
   def _build_fallback_response(self, request_id: Any, is_batch: bool, headers: Dict[str, str]) -> Response:
-    """Сборка фоллбэк-структуры версий для server/discover зондов."""
+    """Сборка фоллбэк-структуры для прохождения проверок версий."""
     content_dict = {
       "jsonrpc": "2.0",
       "id": request_id,
       "result": {
-        "protocolVersions": ["2026-07-28"],
+        "protocolVersions": ["2025-11-25"],
         "serverInfo": {
           "name": "ai-dev-mcp-srv",
           "version": "1.0.0"
@@ -145,19 +144,18 @@ class MCPNativeController:
     return self._build_raw_network_response(200, json.dumps(final_content, ensure_ascii = False))
 
   def _build_empty_handshake_response(self, headers: Dict[str, str]) -> Response:
-    """Формирование пустого хэндшейк-ответа."""
     return self._build_raw_network_response(200, "{}")
 
   def _build_raw_network_response(self, status_code: int, content: str) -> Response:
-    """Сборка сырого HTTP-пакета с защитой регистра CORS и MCP заголовков."""
+    """Сборка сырого HTTP-пакета. Меняем только версию протокола в хедерах для инспектора."""
     response = Response(status_code = status_code, content = content)
 
-    # Запихиваем байты напрямую в обход словаря Starlette, чтобы сохранить CamelCase регистр
+    # Меняем 2026-07-28 на 2025-11-25, чтобы инспектор не отваливался по таймауту версий
     response.raw_headers = [
       (b"content-type", b"application/json"),
-      (b"mcp-protocol-version", b"2026-07-28"),
-      (b"x-mcp-protocol-version", b"2026-07-28"),
-      (b"X-MCP-Protocol-Version", b"2026-07-28"),
+      (b"mcp-protocol-version", b"2025-11-25"),
+      (b"x-mcp-protocol-version", b"2025-11-25"),
+      (b"X-MCP-Protocol-Version", b"2025-11-25"),
       (b"access-control-allow-origin", b"*"),
       (b"access-control-allow-methods", b"POST, GET, OPTIONS"),
       (b"access-control-allow-headers", b"*"),
